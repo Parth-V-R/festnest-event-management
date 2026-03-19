@@ -11,3 +11,7 @@ def category_events(request, category):
         'events': events,
         'category': category
     })
+    
+def event_detail(request, id):
+    event = Event.objects.get(id=id)
+    return render(request, 'event_detail.html', {'event': event})

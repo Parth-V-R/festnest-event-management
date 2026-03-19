@@ -22,5 +22,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('category/<str:category>/', views.category_events, name='category'),
+    path('event/<int:id>/', views.event_detail, name='event_detail'),
     
 ]
