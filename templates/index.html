@@ -1,5 +1,4 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -12,109 +11,114 @@
 
 <body>
 
-    <!-- HEADER -->
-    <header class="header">
+    <!-- NAVBAR -->
+    <nav class="header">
         <div class="logo">FestNest</div>
-        <!-- SEARCH & FILTER -->
-        <section class="search-filter">
-            <input type="text" id="searchBar" placeholder="Search for events...">
-        </section>
-        <button class="signup-btn">Sign Up</button>
 
-    </header>
+        <div class="nav-center">
+            <input type="text" placeholder="Search for events...">
+        </div>
 
-    <!-- HERO SECTION -->
+        <div class="nav-right">
+            <a href="#" class="signup-btn">Sign Up</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
     <section class="hero">
-        <div class="hero-content">
+        <div class="container">
             <h1>Welcome to FestNest – Celebrate, Compete, Connect</h1>
             <p>Your one-stop hub for college cultural, tech, and sports fests.</p>
+
             <div class="hero-buttons">
-                <button class="cta-btn">Get Started</button>
-                <button class="cta-btn secondary">Join Now</button>
+                <a href="#" class="cta-btn">Get Started</a>
+                <a href="#" class="cta-btn secondary">Join Now</a>
             </div>
         </div>
     </section>
 
-
-
-
-
-    <!-- EVENT CARDS GRID -->
-    <main>
+    <!-- EVENT CARDS -->
+    <main class="container">
         <section class="card-grid">
-            <a href="/Cultural/cultural.html" class="card"
-                style="background-image: url('homepageimages/cultural.jpg');">
+
+            <a href="{% url 'category' 'cultural' %}" class="card"
+                style="background-image: url('{% static 'images/cultural.jpg' %}');">
                 <h3>Cultural Events</h3>
                 <p>Experience music, dance, drama, and more vibrant performances.</p>
             </a>
-            <a href="/Technical/technical.html" class="card" style="background-image: url('homepageimages/tech.jpg');">
+
+            <a href="{% url 'category' 'technical' %}" class="card"
+                style="background-image: url('{% static 'images/tech.jpg' %}');">
                 <h3>Technical Events</h3>
                 <p>Compete in coding challenges and innovate solutions.</p>
             </a>
-            <a href="/Sports/sports.html" class="card" style="background-image: url('homepageimages/sports.jpg');">
+
+            <a href="{% url 'category' 'sports' %}" class="card"
+                style="background-image: url('{% static 'images/sports.jpg' %}');">
                 <h3>Sports</h3>
                 <p>Show your skills in exciting sports tournaments.</p>
             </a>
-            <a href="/Nss/nss.html" class="card" style="background-image: url('homepageimages/nss.jpg');">
+
+            <a href="{% url 'category' 'nss' %}" class="card"
+                style="background-image: url('{% static 'images/nss.jpg' %}');">
                 <h3>NSS</h3>
                 <p>Join initiatives to serve the community and make a difference.</p>
             </a>
+
         </section>
     </main>
 
-    <!-- UPCOMING EVENTS CAROUSEL -->
+    <!-- UPCOMING EVENTS -->
     <section class="carousel-section">
-        <h2>Upcoming Events</h2>
-        <div class="carousel-track">
-            <div class="event-card">
-                <!-- <img src="event1.jpg" alt="Event 1"> -->
-                <h2>Music Fest</h2>
-                <p>Starts in <span class="countdown" data-date="2025-08-15"></span></p>
-            </div>
-            <div class="event-card">
-                <!-- <img src="event2.jpg" alt="Event 2"> -->
-                <h2>Hackathon 2025</h2>
-                <p>Starts in <span class="countdown" data-date="2025-08-20"></span></p>
-            </div>
-            <div class="event-card">
-                <!-- <img src="event3.jpg" alt="Event 3"> -->
-                <h2>Sports Meet</h2>
-                <p>Starts in <span class="countdown" data-date="2025-08-25"></span></p>
+        <div class="container">
+            <h2>Upcoming Events</h2>
+
+            <div class="carousel-track">
+                {% for event in events %}
+                <div class="event-card">
+                    <h3>{{ event.title }}</h3>
+                    <p>Date: {{ event.date }}</p>
+                </div>
+                {% empty %}
+                <p>No events available</p>
+                {% endfor %}
             </div>
         </div>
-        <br>
-        <br>
+    </section>
 
-        <!-- FOOTER -->
-        <footer>
-            <div class="footer-container">
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="#">About Us</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">FAQs</a></li>
-                        <li><a href="#">Rules</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <p>Email: <a href="mailto:support@festnest.com">support@festnest.com</a></p>
-                    <p>Helpline: +91-XXXXXXXXXX</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Follow Us</h4>
-                    <div class="social-icons">
-                        <span>🔗</span>
-                        <span>📷</span>
-                        <span>🐦</span>
-                    </div>
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-container">
+
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <p>Email: support@festnest.com</p>
+                <p>Helpline: +91-XXXXXXXXXX</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <div class="social-icons">
+                    <span>🔗</span>
+                    <span>📷</span>
+                    <span>🐦</span>
                 </div>
             </div>
-            <p class="footer-bottom">© 2025 FestNest. All Rights Reserved.</p>
-        </footer>
 
-        <script src="homepagescript.js"></script>
+        </div>
+
+        <p class="footer-bottom">© 2025 FestNest. All Rights Reserved.</p>
+    </footer>
+
 </body>
 
 </html>
