@@ -17,11 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from events import views
+from accounts import views as acc_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('category/<str:category>/', views.category_events, name='category'),
     path('event/<int:id>/', views.event_detail, name='event_detail'),
+    path('signup/', acc_views.signup, name='signup'),
+    path('login/', acc_views.user_login, name='login'),
+    path('logout/', acc_views.user_logout, name='logout'),
+    path('event/<int:id>/register/', views.register_event, name='register_event'),
     
 ]
