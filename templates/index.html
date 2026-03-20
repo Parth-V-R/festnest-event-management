@@ -20,7 +20,14 @@
         </div>
 
         <div class="nav-right">
-            <a href="#" class="signup-btn">Sign Up</a>
+            {% if user.is_authenticated %}
+                <span style="color:white; margin-right:10px;">Hello, {{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="signup-btn">Login</a>
+                <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
+            {% endif %}
+            
         </div>
     </nav>
 
