@@ -20,6 +20,17 @@
 
     <br>
 
+    <!-- ✅ ADD THIS BLOCK -->
+    {% if user.is_authenticated %}
+        <a href="{% url 'register_event' event.id %}" class="cta-btn">
+            Register for Event
+        </a>
+    {% else %}
+        <p>Please <a href="{% url 'login' %}">login</a> to register.</p>
+    {% endif %}
+
+    <br><br>
+
     <a href="/" class="cta-btn">← Back to Home</a>
 
 </div>
