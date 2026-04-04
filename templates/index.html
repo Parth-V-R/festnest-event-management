@@ -1,193 +1,146 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FestNest</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
+{% block title %}FestNest{% endblock %}
 
-<body>
+{% block content %}
+{% if search_query %}
+<section class="carousel-section search-results-section">
+    <div class="container">
+        <h2>Search Results for "{{ search_query }}"</h2>
+        <p class="search-meta">{{ result_count }} event{{ result_count|pluralize }} found</p>
+        <p class="search-meta"><a href="{% url 'home' %}">Clear search</a></p>
 
-    <!-- NAVBAR -->
-    <nav class="header">
-        <div class="logo">FestNest</div>
-
-        <div class="nav-center">
-            <form method="get" action="{% url 'home' %}" class="nav-search-form">
-                <input type="text" name="q" value="{{ search_query }}" placeholder="Search for events...">
-                <button type="submit" class="search-btn">Search</button>
-            </form>
-        </div>
-
-        <div class="nav-right">
-            {% if user.is_authenticated %}
-                <span class="welcome-text">Hello, {{ user.username }}</span>
-                {% if user.is_staff %}
-                    <a href="{% url 'manage_events' %}" class="signup-btn">Manage Events</a>
-                {% endif %}
-                <a href="{% url 'my_registrations' %}" class="signup-btn">My Registrations</a>
-                <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
-            {% else %}
-                <a href="{% url 'login' %}" class="signup-btn">Login</a>
-                <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
-            {% endif %}
-            
-        </div>
-    </nav>
-
-    {% if search_query %}
-    <section class="carousel-section search-results-section">
-        <div class="container">
-            <h2>Search Results for "{{ search_query }}"</h2>
-            <p class="search-meta">{{ result_count }} event{{ result_count|pluralize }} found</p>
-            <p class="search-meta"><a href="{% url 'home' %}">Clear search</a></p>
-
-            <div class="carousel-track">
-                {% for event in searched_events %}
-                <article class="upcoming-card">
-                    <div class="upcoming-top">
-                        <span class="category-pill">{{ event.category|title }}</span>
-                        <span class="date-pill">{{ event.date }}</span>
-                    </div>
-
-                    <h3>{{ event.title }}</h3>
-                    <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
-
-                    <div class="upcoming-actions">
-                        <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
-                        {% if user.is_authenticated %}
-                            <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                                {% csrf_token %}
-                                <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
-                            </form>
-                        {% else %}
-                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
-                        {% endif %}
-                    </div>
-                </article>
-                {% empty %}
-                <p class="empty-text">No matching events found</p>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-    {% endif %}
-
-    <!-- HERO -->
-    <section class="hero">
-        <div class="container">
-            <h1>Welcome to FestNest – Celebrate, Compete, Connect</h1>
-            <p>Your one-stop hub for college cultural, tech, and sports fests.</p>
-
-            <div class="hero-buttons">
-                <a href="#" class="cta-btn">Get Started</a>
-                <a href="#" class="cta-btn secondary">Join Now</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- EVENT CARDS -->
-    <main class="container">
-        <section class="card-grid">
-
-            <a href="{% url 'category' 'cultural' %}" class="card"
-                style="background-image: url('{% static 'images/cultural.jpg' %}');">
-                <h3>Cultural Events</h3>
-                <p>Experience music, dance, drama, and more vibrant performances.</p>
-            </a>
-
-            <a href="{% url 'category' 'technical' %}" class="card"
-                style="background-image: url('{% static 'images/tech.jpg' %}');">
-                <h3>Technical Events</h3>
-                <p>Compete in coding challenges and innovate solutions.</p>
-            </a>
-
-            <a href="{% url 'category' 'sports' %}" class="card"
-                style="background-image: url('{% static 'images/sports.jpg' %}');">
-                <h3>Sports</h3>
-                <p>Show your skills in exciting sports tournaments.</p>
-            </a>
-
-            <a href="{% url 'category' 'nss' %}" class="card"
-                style="background-image: url('{% static 'images/nss.jpg' %}');">
-                <h3>NSS</h3>
-                <p>Join initiatives to serve the community and make a difference.</p>
-            </a>
-
-        </section>
-    </main>
-
-    <!-- UPCOMING EVENTS -->
-    <section class="carousel-section">
-        <div class="container">
-            <h2>Upcoming Events</h2>
-
-            <div class="carousel-track">
-                {% for event in upcoming_events %}
-                <article class="upcoming-card">
-                    <div class="upcoming-top">
-                        <span class="category-pill">{{ event.category|title }}</span>
-                        <span class="date-pill">{{ event.date }}</span>
-                    </div>
-
-                    <h3>{{ event.title }}</h3>
-                    <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
-
-                    <div class="upcoming-actions">
-                        <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
-                        {% if user.is_authenticated %}
-                            <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                                {% csrf_token %}
-                                <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
-                            </form>
-                        {% else %}
-                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
-                        {% endif %}
-                    </div>
-                </article>
-                {% empty %}
-                <p class="empty-text">No events available</p>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <!-- FOOTER -->
-    <footer>
-        <div class="footer-container">
-
-            <div class="footer-section">
-                <h4>Quick Links</h4>
-                <ul>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Contact</a></li>
-                    <li><a href="#">FAQs</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-section">
-                <h4>Contact</h4>
-                <p>Email: support@festnest.com</p>
-                <p>Helpline: +91-XXXXXXXXXX</p>
-            </div>
-
-            <div class="footer-section">
-                <h4>Follow Us</h4>
-                <div class="social-icons">
-                    <span>🔗</span>
-                    <span>📷</span>
-                    <span>🐦</span>
+        <div class="carousel-track">
+            {% for event in searched_events %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="date-pill">{{ event.date }}</span>
                 </div>
-            </div>
 
+                <h3>{{ event.title }}</h3>
+                <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
+                    {% endif %}
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">No matching events found</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="hero">
+    <div class="container">
+        <h1>Welcome to FestNest - Celebrate, Compete, Connect</h1>
+        <p>Your one-stop hub for college cultural, tech, and sports fests.</p>
+
+        <div class="hero-buttons">
+            <a href="#" class="cta-btn">Get Started</a>
+            <a href="#" class="cta-btn secondary">Join Now</a>
+        </div>
+    </div>
+</section>
+
+<main class="container">
+    <section class="card-grid">
+        <a href="{% url 'category' 'cultural' %}" class="card" style="background-image: url('{% static 'images/cultural.jpg' %}');">
+            <h3>Cultural Events</h3>
+            <p>Experience music, dance, drama, and more vibrant performances.</p>
+        </a>
+
+        <a href="{% url 'category' 'technical' %}" class="card" style="background-image: url('{% static 'images/tech.jpg' %}');">
+            <h3>Technical Events</h3>
+            <p>Compete in coding challenges and innovate solutions.</p>
+        </a>
+
+        <a href="{% url 'category' 'sports' %}" class="card" style="background-image: url('{% static 'images/sports.jpg' %}');">
+            <h3>Sports</h3>
+            <p>Show your skills in exciting sports tournaments.</p>
+        </a>
+
+        <a href="{% url 'category' 'nss' %}" class="card" style="background-image: url('{% static 'images/nss.jpg' %}');">
+            <h3>NSS</h3>
+            <p>Join initiatives to serve the community and make a difference.</p>
+        </a>
+    </section>
+</main>
+
+<section class="carousel-section">
+    <div class="container">
+        <h2>Upcoming Events</h2>
+
+        <div class="carousel-track">
+            {% for event in upcoming_events %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="date-pill">{{ event.date }}</span>
+                </div>
+
+                <h3>{{ event.title }}</h3>
+                <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
+                    {% endif %}
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">No events available</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer>
+    <div class="footer-container">
+        <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+                <li><a href="#">FAQs</a></li>
+            </ul>
         </div>
 
-        <p class="footer-bottom">© 2025 FestNest. All Rights Reserved.</p>
-    </footer>
+        <div class="footer-section">
+            <h4>Contact</h4>
+            <p>Email: support@festnest.com</p>
+            <p>Helpline: +91-XXXXXXXXXX</p>
+        </div>
 
-</body>
+        <div class="footer-section">
+            <h4>Follow Us</h4>
+            <div class="social-icons">
+                <span>Link</span>
+                <span>Photo</span>
+                <span>Bird</span>
+            </div>
+        </div>
+    </div>
 
-</html>
+    <p class="footer-bottom">© 2025 FestNest. All Rights Reserved.</p>
+</footer>
+{% endblock %}

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,17 +21,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+DJANGO_ENV = os.getenv('DJANGO_ENV', 'development').lower()
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-insecure-key-change-me')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DJANGO_ENV == 'production':
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set in production.')
+    SECRET_KEY = 'dev-insecure-key-change-me'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
+debug_raw = os.getenv('DJANGO_DEBUG')
+if debug_raw is None:
+    DEBUG = DJANGO_ENV != 'production'
+else:
+    DEBUG = debug_raw.lower() in ('1', 'true', 'yes', 'on')
+
+if DJANGO_ENV == 'production' and DEBUG:
+    raise ImproperlyConfigured('DJANGO_DEBUG must be false in production.')
 
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
     if host.strip()
 ]
+if DJANGO_ENV == 'production' and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('DJANGO_ALLOWED_HOSTS must be set in production.')
 
 
 # Application definition

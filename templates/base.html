@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FestNest{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<nav class="header">
+    <a href="{% url 'home' %}" class="logo-link"><div class="logo">FestNest</div></a>
+
+    <div class="nav-center">
+        <form method="get" action="{% url 'home' %}" class="nav-search-form">
+            <input type="text" name="q" value="{% firstof search_query request.GET.q '' %}" placeholder="Search for events...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="nav-right">
+        {% if user.is_authenticated %}
+            <span class="welcome-text">Hello, {{ user.username }}</span>
+            <a href="{% url 'my_registrations' %}" class="signup-btn {% if request.path == '/my-registrations/' %}nav-active{% endif %}">My Registrations</a>
+            <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="signup-btn">Login</a>
+            <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
+        {% endif %}
+    </div>
+</nav>
+
+{% block content %}{% endblock %}
+{% block footer %}{% endblock %}
+
+</body>
+</html>

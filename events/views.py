@@ -1,11 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Event
-from .forms import EventForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.db.models import Q
+from django.utils import timezone
 
 
 def home(request):
@@ -34,7 +33,7 @@ def home(request):
     )
 
 def category_events(request, category):
-    events = Event.objects.filter(category=category)
+    events = Event.objects.filter(category=category).order_by('date')
     return render(request, 'category.html', {
         'events': events,
         'category': category
@@ -52,11 +51,6 @@ def event_detail(request, id):
         {'event': event, 'is_registered': is_registered},
     )
 
-
-def is_staff_user(user):
-    return user.is_staff
-
-
 @login_required
 def my_registrations(request):
     events = Event.objects.filter(attendees=request.user).order_by('date')
@@ -67,6 +61,10 @@ def my_registrations(request):
 @require_POST
 def register_event(request, id):
     event = get_object_or_404(Event, id=id)
+    if event.date < timezone.localdate():
+        messages.error(request, 'Registration is closed for past events.')
+        return redirect('event_detail', id=id)
+
     if event.attendees.filter(pk=request.user.pk).exists():
         messages.info(request, 'You are already registered for this event.')
     else:
@@ -86,59 +84,3 @@ def unregister_event(request, id):
         messages.info(request, 'You are not registered for this event.')
 
     return redirect('my_registrations')
-
-
-@login_required
-@user_passes_test(is_staff_user)
-def manage_events(request):
-    events = Event.objects.all().order_by('date')
-    return render(request, 'manage_events.html', {'events': events})
-
-
-@login_required
-@user_passes_test(is_staff_user)
-def create_event(request):
-    if request.method == 'POST':
-        form = EventForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Event created successfully.')
-            return redirect('manage_events')
-    else:
-        form = EventForm()
-
-    return render(
-        request,
-        'event_form.html',
-        {'form': form, 'page_title': 'Create Event', 'button_label': 'Create Event'},
-    )
-
-
-@login_required
-@user_passes_test(is_staff_user)
-def edit_event(request, id):
-    event = get_object_or_404(Event, id=id)
-    if request.method == 'POST':
-        form = EventForm(request.POST, instance=event)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Event updated successfully.')
-            return redirect('manage_events')
-    else:
-        form = EventForm(instance=event)
-
-    return render(
-        request,
-        'event_form.html',
-        {'form': form, 'page_title': 'Edit Event', 'button_label': 'Update Event'},
-    )
-
-
-@login_required
-@user_passes_test(is_staff_user)
-@require_POST
-def delete_event(request, id):
-    event = get_object_or_404(Event, id=id)
-    event.delete()
-    messages.success(request, 'Event deleted successfully.')
-    return redirect('manage_events')

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from datetime import date
+from datetime import date, timedelta
 
 from .models import Event
 
@@ -44,6 +44,20 @@ class EventRegistrationTests(TestCase):
         self.assertRedirects(response_1, reverse('event_detail', args=[self.event.id]))
         self.assertRedirects(response_2, reverse('event_detail', args=[self.event.id]))
         self.assertEqual(self.event.attendees.filter(pk=self.user.pk).count(), 1)
+
+    def test_register_blocks_past_event(self):
+        past_event = Event.objects.create(
+            title='Past Seminar',
+            category='technical',
+            date=date.today() - timedelta(days=1),
+            description='Old event.',
+        )
+        self.client.login(username='student1', password='safePass123!')
+
+        response = self.client.post(reverse('register_event', args=[past_event.id]))
+
+        self.assertRedirects(response, reverse('event_detail', args=[past_event.id]))
+        self.assertFalse(past_event.attendees.filter(pk=self.user.pk).exists())
 
 
 class EventSearchTests(TestCase):
@@ -127,65 +141,16 @@ class MyRegistrationsTests(TestCase):
             self.event_registered.attendees.filter(pk=self.user.pk).exists(),
         )
 
+    def test_unregister_requires_login(self):
+        unregister_url = reverse('unregister_event', args=[self.event_registered.id])
 
-class EventManagementAccessTests(TestCase):
-    def setUp(self):
-        self.user_model = get_user_model()
-        self.student = self.user_model.objects.create_user(
-            username='student3',
-            password='safePass123!',
-        )
-        self.staff = self.user_model.objects.create_user(
-            username='coordinator1',
-            password='safePass123!',
-            is_staff=True,
-        )
-        self.event = Event.objects.create(
-            title='Robotics Expo',
-            category='technical',
-            date=date(2026, 6, 5),
-            description='Prototype showcase.',
-        )
+        response = self.client.post(unregister_url)
 
-    def test_manage_events_requires_staff(self):
-        self.client.login(username='student3', password='safePass123!')
-        response = self.client.get(reverse('manage_events'))
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('login')}?next={unregister_url}")
 
-    def test_staff_can_create_event(self):
-        self.client.login(username='coordinator1', password='safePass123!')
-        response = self.client.post(
-            reverse('create_event'),
-            {
-                'title': 'Code Sprint',
-                'category': 'technical',
-                'date': '2026-06-20',
-                'description': 'Fast-paced coding competition.',
-            },
-        )
+    def test_unregister_is_post_only(self):
+        self.client.login(username='student2', password='safePass123!')
 
-        self.assertRedirects(response, reverse('manage_events'))
-        self.assertTrue(Event.objects.filter(title='Code Sprint').exists())
+        response = self.client.get(reverse('unregister_event', args=[self.event_registered.id]))
 
-    def test_staff_can_edit_event(self):
-        self.client.login(username='coordinator1', password='safePass123!')
-        response = self.client.post(
-            reverse('edit_event', args=[self.event.id]),
-            {
-                'title': 'Robotics Expo Updated',
-                'category': 'technical',
-                'date': '2026-06-10',
-                'description': 'Updated showcase details.',
-            },
-        )
-
-        self.assertRedirects(response, reverse('manage_events'))
-        self.event.refresh_from_db()
-        self.assertEqual(self.event.title, 'Robotics Expo Updated')
-
-    def test_staff_can_delete_event(self):
-        self.client.login(username='coordinator1', password='safePass123!')
-        response = self.client.post(reverse('delete_event', args=[self.event.id]))
-
-        self.assertRedirects(response, reverse('manage_events'))
-        self.assertFalse(Event.objects.filter(id=self.event.id).exists())
+        self.assertEqual(response.status_code, 405)

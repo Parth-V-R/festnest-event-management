@@ -370,16 +370,6 @@ button.cta-btn {
     background: #eaf2ff;
 }
 
-.delete-btn {
-    margin-top: 10px;
-    background: #fff1f2;
-    color: #9f1239;
-    border: 1px solid #fda4af;
-}
-
-.delete-btn:hover {
-    background: #ffe4e6;
-}
 
 /* FOOTER */
 footer {
@@ -571,25 +561,6 @@ form {
     width: 100%;
 }
 
-.event-form p {
-    width: 100%;
-    text-align: left;
-    margin-bottom: 10px;
-}
-
-.event-form label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 600;
-}
-
-.event-form textarea,
-.event-form select {
-    width: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
 
 .auth-submit {
     width: 100%;

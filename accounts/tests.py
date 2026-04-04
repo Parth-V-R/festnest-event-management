@@ -25,6 +25,16 @@ class AccountsViewTests(TestCase):
         )
 
         self.assertRedirects(response, reverse('signup'))
+    
+    def test_signup_rejects_weak_password(self):
+        response = self.client.post(
+            reverse('signup'),
+            {'username': 'bob', 'password': '123'},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.user_model.objects.filter(username='bob').exists())
 
     def test_login_with_invalid_credentials_shows_error(self):
         self.user_model.objects.create_user(username='alice', password='safePass123!')

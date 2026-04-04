@@ -1,37 +1,9 @@
-{% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Signup</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
-<body class="auth-page">
+{% extends 'base.html' %}
 
-<nav class="header">
-    <a href="{% url 'home' %}" class="logo-link"><div class="logo">FestNest</div></a>
+{% block title %}Signup{% endblock %}
+{% block body_class %}auth-page{% endblock %}
 
-    <div class="nav-center">
-        <form method="get" action="{% url 'home' %}" class="nav-search-form">
-            <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search for events...">
-            <button type="submit" class="search-btn">Search</button>
-        </form>
-    </div>
-
-    <div class="nav-right">
-        {% if user.is_authenticated %}
-            <span class="welcome-text">Hello, {{ user.username }}</span>
-            {% if user.is_staff %}
-                <a href="{% url 'manage_events' %}" class="signup-btn">Manage Events</a>
-            {% endif %}
-            <a href="{% url 'my_registrations' %}" class="signup-btn">My Registrations</a>
-            <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
-        {% else %}
-            <a href="{% url 'login' %}" class="signup-btn">Login</a>
-            <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
-        {% endif %}
-    </div>
-</nav>
-
+{% block content %}
 <div class="container auth-shell">
     <div class="auth-card">
         <h2>Create Account</h2>
@@ -49,13 +21,10 @@
             {% csrf_token %}
             <input type="text" name="username" placeholder="Username" autocomplete="username" minlength="3" required>
             <input type="password" name="password" placeholder="Password (min 8 chars)" autocomplete="new-password" minlength="8" required>
-
             <button type="submit" class="cta-btn auth-submit">Signup</button>
         </form>
 
         <p class="auth-link">Already have an account? <a href="{% url 'login' %}">Login</a></p>
     </div>
 </div>
-
-</body>
-</html>
+{% endblock %}
