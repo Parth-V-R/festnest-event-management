@@ -1,0 +1,74 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Registrations</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="detail-page">
+
+<nav class="header">
+    <a href="{% url 'home' %}" class="logo-link"><div class="logo">FestNest</div></a>
+
+    <div class="nav-center">
+        <form method="get" action="{% url 'home' %}" class="nav-search-form">
+            <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search for events...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="nav-right">
+        {% if user.is_authenticated %}
+            <span class="welcome-text">Hello, {{ user.username }}</span>
+            {% if user.is_staff %}
+                <a href="{% url 'manage_events' %}" class="signup-btn">Manage Events</a>
+            {% endif %}
+            <a href="{% url 'my_registrations' %}" class="signup-btn nav-active">My Registrations</a>
+            <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="signup-btn">Login</a>
+            <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
+        {% endif %}
+    </div>
+</nav>
+
+<section class="carousel-section registrations-section">
+    <div class="container">
+        <h2>My Registrations</h2>
+
+        {% if messages %}
+            <div class="message-list centered-message-list">
+                {% for message in messages %}
+                    <p class="message message-{{ message.tags|default:'info' }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="carousel-track">
+            {% for event in events %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="date-pill">{{ event.date }}</span>
+                </div>
+
+                <h3>{{ event.title }}</h3>
+                <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                    </form>
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">You have not registered for any events yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

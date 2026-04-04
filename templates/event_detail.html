@@ -5,34 +5,74 @@
     <title>{{ event.title }}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<body>
+<body class="detail-page">
 
-<div class="container" style="margin-top: 40px;">
+<nav class="header">
+    <a href="{% url 'home' %}" class="logo-link"><div class="logo">FestNest</div></a>
 
-    <h1>{{ event.title }}</h1>
+    <div class="nav-center">
+        <form method="get" action="{% url 'home' %}" class="nav-search-form">
+            <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search for events...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
 
-    <p><strong>Category:</strong> {{ event.category }}</p>
-    <p><strong>Date:</strong> {{ event.date }}</p>
+    <div class="nav-right">
+        {% if user.is_authenticated %}
+            <span class="welcome-text">Hello, {{ user.username }}</span>
+            {% if user.is_staff %}
+                <a href="{% url 'manage_events' %}" class="signup-btn">Manage Events</a>
+            {% endif %}
+            <a href="{% url 'my_registrations' %}" class="signup-btn">My Registrations</a>
+            <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="signup-btn">Login</a>
+            <a href="{% url 'signup' %}" class="signup-btn">Sign Up</a>
+        {% endif %}
+    </div>
+</nav>
 
-    <br>
+<div class="container detail-shell">
+    <div class="detail-card">
+        {% if messages %}
+            <div class="message-list">
+                {% for message in messages %}
+                    <p class="message message-{{ message.tags|default:'info' }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    <p>{{ event.description }}</p>
+        <h1>{{ event.title }}</h1>
 
-    <br>
+        <div class="detail-meta">
+            <p><strong>Category:</strong> {{ event.category|title }}</p>
+            <p><strong>Date:</strong> {{ event.date }}</p>
+        </div>
 
-    <!-- ✅ ADD THIS BLOCK -->
-    {% if user.is_authenticated %}
-        <a href="{% url 'register_event' event.id %}" class="cta-btn">
-            Register for Event
-        </a>
-    {% else %}
-        <p>Please <a href="{% url 'login' %}">login</a> to register.</p>
-    {% endif %}
+        <p class="detail-description">{{ event.description }}</p>
 
-    <br><br>
-
-    <a href="/" class="cta-btn">← Back to Home</a>
-
+        {% if user.is_authenticated %}
+            {% if is_registered %}
+                <p class="registration-note">You are already registered for this event.</p>
+                <div class="detail-actions">
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                </div>
+            {% else %}
+                <div class="detail-actions">
+                    <form method="post" action="{% url 'register_event' event.id %}" class="inline-form detail-inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Register for Event</button>
+                    </form>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="registration-note">Please <a href="{% url 'login' %}">login</a> to register.</p>
+            <div class="detail-actions">
+                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 </body>

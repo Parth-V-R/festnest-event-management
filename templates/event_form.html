@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="auth-page">
+
+<nav class="header">
+    <a href="{% url 'home' %}" class="logo-link"><div class="logo">FestNest</div></a>
+
+    <div class="nav-center">
+        <form method="get" action="{% url 'home' %}" class="nav-search-form">
+            <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search for events...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="nav-right">
+        <span class="welcome-text">Hello, {{ user.username }}</span>
+        <a href="{% url 'manage_events' %}" class="signup-btn nav-active">Manage Events</a>
+        <a href="{% url 'my_registrations' %}" class="signup-btn">My Registrations</a>
+        <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
+    </div>
+</nav>
+
+<div class="container auth-shell">
+    <div class="auth-card">
+        <h2>{{ page_title }}</h2>
+
+        <form method="post" class="auth-form event-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="cta-btn auth-submit">{{ button_label }}</button>
+        </form>
+
+        <p class="auth-link"><a href="{% url 'manage_events' %}">Back to Manage Events</a></p>
+    </div>
+</div>
+
+</body>
+</html>
