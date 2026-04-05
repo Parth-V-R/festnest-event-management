@@ -9,7 +9,7 @@
     <div class="container">
         <h2>Search Results for "{{ search_query }}"</h2>
         <p class="search-meta">{{ result_count }} event{{ result_count|pluralize }} found</p>
-        <p class="search-meta"><a href="{% url 'home' %}">Clear search</a></p>
+        <p class="search-meta"><a href="{% url 'home' %}" class="clear-search-btn">Clear Search</a></p>
 
         <div class="carousel-track">
             {% for event in searched_events %}

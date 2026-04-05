@@ -309,6 +309,36 @@ button.cta-btn {
     color: #334155;
 }
 
+.clear-search-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.clear-search-btn:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+}
+
+.clear-search-btn:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
 .centered-message-list {
     max-width: 700px;
     margin: 14px auto 0;
