@@ -19,14 +19,87 @@
         <div class="detail-meta">
             <p><strong>Category:</strong> {{ event.category|title }}</p>
             <p><strong>Date:</strong> {{ event.date }}</p>
-            <p><strong>Capacity:</strong> {{ event.capacity }}</p>
-            <p><strong>Seats Left:</strong> {{ event.seats_left }}</p>
-            <p><strong>Waitlist:</strong> {{ waitlist_count }}</p>
+            {% if event.is_team_event %}
+                <p><strong>Type:</strong> Team Event</p>
+                <p><strong>Team Size:</strong> {{ event.min_team_size }}-{{ event.max_team_size }}</p>
+                <p><strong>Submitted Teams:</strong> {{ submitted_team_count }}</p>
+            {% else %}
+                <p><strong>Capacity:</strong> {{ event.capacity }}</p>
+                <p><strong>Seats Left:</strong> {{ event.seats_left }}</p>
+                <p><strong>Waitlist:</strong> {{ waitlist_count }}</p>
+            {% endif %}
         </div>
 
         <p class="detail-description">{{ event.description }}</p>
 
-        {% if is_past %}
+        {% if event.is_team_event %}
+            {% if is_past %}
+                <p class="registration-note">This event is completed.</p>
+                <div class="detail-actions">
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                </div>
+            {% elif not user.is_authenticated %}
+                <p class="registration-note">Please <a href="{% url 'login' %}">login</a> to manage your team.</p>
+                <div class="detail-actions">
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                </div>
+            {% elif user_team %}
+                <p class="registration-note">
+                    Team: <strong>{{ user_team.name }}</strong> |
+                    Leader: <strong>{{ user_team.leader.username }}</strong> |
+                    Invite Code: <strong>{{ user_team.join_code }}</strong>
+                </p>
+                <p class="search-meta">Members ({{ user_team.member_count }}/{{ event.max_team_size }}):</p>
+                <ul class="team-members">
+                    {% for member in user_team.members.all %}
+                        <li>{{ member.username }}{% if member.id == user_team.leader.id %} (Leader){% endif %}</li>
+                    {% endfor %}
+                </ul>
+
+                {% if user_team.is_submitted %}
+                    <p class="registration-note">Your team is submitted for this event.</p>
+                    <div class="detail-actions">
+                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    </div>
+                {% else %}
+                    <div class="detail-actions team-action-wrap">
+                        {% if is_team_leader %}
+                        <form method="post" action="{% url 'submit_team' event.id %}" class="inline-form detail-inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Submit Team</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{% url 'leave_team' event.id %}" class="inline-form detail-inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Leave Team</button>
+                        </form>
+                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="team-block">
+                    <h3>Create Team</h3>
+                    <form method="post" action="{% url 'create_team' event.id %}" class="team-form">
+                        {% csrf_token %}
+                        <input type="text" name="team_name" placeholder="Enter team name" required>
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Create Team</button>
+                    </form>
+                </div>
+
+                <div class="team-block">
+                    <h3>Join Team</h3>
+                    <form method="post" action="{% url 'join_team' event.id %}" class="team-form">
+                        {% csrf_token %}
+                        <input type="text" name="join_code" placeholder="Enter invite code" required>
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Join Team</button>
+                    </form>
+                </div>
+
+                <div class="detail-actions">
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                </div>
+            {% endif %}
+        {% elif is_past %}
             <p class="registration-note">This event is completed.</p>
             <div class="detail-actions">
                 <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>

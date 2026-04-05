@@ -12,31 +12,48 @@
         <div class="event-card">
             <h3>{{ event.title }}</h3>
             <p>Date: {{ event.date }}</p>
+            {% if event.is_team_event %}
+            <p class="search-meta">Team Event ({{ event.min_team_size }}-{{ event.max_team_size }} members)</p>
+            {% endif %}
             <a href="{% url 'event_detail' event.id %}" class="event-link">View Details</a>
 
             {% if event.date < today %}
                 <p class="registration-note">Event Completed</p>
             {% elif user.is_authenticated %}
-                {% if event.id in registered_event_ids %}
-                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.path }}">
-                        <button type="submit" class="cta-btn register-btn">Unregister</button>
-                    </form>
-                {% elif event.id in waitlisted_event_ids %}
-                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.path }}">
-                        <button type="submit" class="cta-btn register-btn">Leave Waitlist</button>
-                    </form>
+                {% if event.is_team_event %}
+                    {% if event.id in submitted_team_event_ids %}
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Team Registered</a>
+                    {% elif event.id in user_team_event_ids %}
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Continue Team</a>
+                    {% else %}
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Create/Join Team</a>
+                    {% endif %}
                 {% else %}
-                    <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                        {% csrf_token %}
-                        <button type="submit" class="cta-btn register-btn">Register</button>
-                    </form>
+                    {% if event.id in registered_event_ids %}
+                        <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" class="cta-btn register-btn">Unregister</button>
+                        </form>
+                    {% elif event.id in waitlisted_event_ids %}
+                        <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" class="cta-btn register-btn">Leave Waitlist</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="cta-btn register-btn">Register</button>
+                        </form>
+                    {% endif %}
                 {% endif %}
             {% else %}
-                <p class="registration-note"><a href="{% url 'login' %}">Login to register</a></p>
+                {% if event.is_team_event %}
+                    <p class="registration-note"><a href="{% url 'login' %}">Login for team registration</a></p>
+                {% else %}
+                    <p class="registration-note"><a href="{% url 'login' %}">Login to register</a></p>
+                {% endif %}
             {% endif %}
         </div>
         {% empty %}

@@ -6,7 +6,7 @@
 {% block content %}
 <section class="carousel-section registrations-section">
     <div class="container">
-        <h2>My Active Registrations</h2>
+        <h2>My Active Individual Registrations</h2>
 
         {% if messages %}
             <div class="message-list centered-message-list">
@@ -40,6 +40,52 @@
             {% endfor %}
         </div>
 
+        <h2 style="margin-top: 24px;">My Active Team Registrations</h2>
+        <div class="carousel-track">
+            {% for team in active_team_registrations %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="date-pill">{{ team.event.date }}</span>
+                </div>
+                <h3>{{ team.event.title }}</h3>
+                <p class="upcoming-desc">
+                    Team: <strong>{{ team.name }}</strong><br>
+                    Leader: {{ team.leader.username }}<br>
+                    Members: {{ team.member_count }}
+                </p>
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' team.event.id %}" class="cta-btn upcoming-btn">View Team</a>
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">No active team registrations.</p>
+            {% endfor %}
+        </div>
+
+        <h2 style="margin-top: 24px;">My Teams In Progress</h2>
+        <div class="carousel-track">
+            {% for team in active_teams_in_progress %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="date-pill">{{ team.event.date }}</span>
+                </div>
+                <h3>{{ team.event.title }}</h3>
+                <p class="upcoming-desc">
+                    Team: <strong>{{ team.name }}</strong><br>
+                    Invite Code: {{ team.join_code }}<br>
+                    Members: {{ team.member_count }} / {{ team.event.max_team_size }}
+                </p>
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' team.event.id %}" class="cta-btn upcoming-btn">Continue Team</a>
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">No teams in progress.</p>
+            {% endfor %}
+        </div>
+
         <h2 style="margin-top: 24px;">My Waitlist</h2>
         <div class="carousel-track">
             {% for entry in waitlisted_entries %}
@@ -65,7 +111,7 @@
             {% endfor %}
         </div>
 
-        <h2 style="margin-top: 24px;">Past Registrations</h2>
+        <h2 style="margin-top: 24px;">Past Individual Registrations</h2>
         <div class="carousel-track">
             {% for event in past_events %}
             <article class="upcoming-card">
@@ -80,6 +126,27 @@
             </article>
             {% empty %}
             <p class="empty-text">No past registrations yet.</p>
+            {% endfor %}
+        </div>
+
+        <h2 style="margin-top: 24px;">Past Team Registrations</h2>
+        <div class="carousel-track">
+            {% for team in past_team_registrations %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="date-pill">{{ team.event.date }}</span>
+                </div>
+                <h3>{{ team.event.title }}</h3>
+                <p class="upcoming-desc">
+                    Team: <strong>{{ team.name }}</strong><br>
+                    Leader: {{ team.leader.username }}<br>
+                    Members: {{ team.member_count }}
+                </p>
+                <p class="registration-note">Event Completed</p>
+            </article>
+            {% empty %}
+            <p class="empty-text">No past team registrations.</p>
             {% endfor %}
         </div>
     </div>
