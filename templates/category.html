@@ -14,11 +14,27 @@
             <p>Date: {{ event.date }}</p>
             <a href="{% url 'event_detail' event.id %}" class="event-link">View Details</a>
 
-            {% if user.is_authenticated %}
-                <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                    {% csrf_token %}
-                    <button type="submit" class="cta-btn register-btn">Register</button>
-                </form>
+            {% if event.date < today %}
+                <p class="registration-note">Event Completed</p>
+            {% elif user.is_authenticated %}
+                {% if event.id in registered_event_ids %}
+                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="cta-btn register-btn">Unregister</button>
+                    </form>
+                {% elif event.id in waitlisted_event_ids %}
+                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="cta-btn register-btn">Leave Waitlist</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="cta-btn register-btn">Register</button>
+                    </form>
+                {% endif %}
             {% else %}
                 <p class="registration-note"><a href="{% url 'login' %}">Login to register</a></p>
             {% endif %}

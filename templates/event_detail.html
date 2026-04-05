@@ -26,15 +26,30 @@
 
         <p class="detail-description">{{ event.description }}</p>
 
-        {% if user.is_authenticated %}
+        {% if is_past %}
+            <p class="registration-note">This event is completed.</p>
+            <div class="detail-actions">
+                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+            </div>
+        {% elif user.is_authenticated %}
             {% if is_registered %}
                 <p class="registration-note">You are already registered for this event.</p>
                 <div class="detail-actions">
+                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form detail-inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Unregister</button>
+                    </form>
                     <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
                 </div>
             {% elif is_waitlisted %}
                 <p class="registration-note">You are currently on the waitlist for this event.</p>
                 <div class="detail-actions">
+                    <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form detail-inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Leave Waitlist</button>
+                    </form>
                     <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
                 </div>
             {% else %}

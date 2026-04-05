@@ -14,9 +14,12 @@
 
     <div class="nav-center">
         <form method="get" action="{% url 'home' %}" class="nav-search-form">
-            <input type="text" name="q" value="{% firstof search_query request.GET.q '' %}" placeholder="Search for events...">
+            <input type="text" name="q" value="{% firstof search_query request.GET.q '' %}" placeholder="Search for events..." class="live-search-input">
             <button type="submit" class="search-btn">Search</button>
         </form>
+        <div class="search-suggestions" hidden>
+            <ul class="search-suggestions-list"></ul>
+        </div>
     </div>
 
     <div class="nav-right">
@@ -36,6 +39,121 @@
 
 {% block content %}{% endblock %}
 {% block footer %}{% endblock %}
+
+<script>
+(() => {
+    const searchForms = document.querySelectorAll('.nav-search-form');
+    if (!searchForms.length) return;
+
+    searchForms.forEach((form) => {
+        const input = form.querySelector('.live-search-input');
+        const navCenter = form.closest('.nav-center');
+        const box = navCenter ? navCenter.querySelector('.search-suggestions') : null;
+        const list = box ? box.querySelector('.search-suggestions-list') : null;
+        if (!input) return;
+
+        let timerId = null;
+        let activeIndex = -1;
+        let currentItems = [];
+
+        const clearSuggestions = () => {
+            if (!box || !list) return;
+            list.innerHTML = '';
+            box.hidden = true;
+            activeIndex = -1;
+            currentItems = [];
+        };
+
+        const applySuggestion = (value) => {
+            input.value = value;
+            clearSuggestions();
+            form.requestSubmit();
+        };
+
+        const renderSuggestions = (items) => {
+            if (!box || !list) return;
+            if (!items.length) {
+                clearSuggestions();
+                return;
+            }
+
+            list.innerHTML = '';
+            items.forEach((item, index) => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'suggestion-item';
+                btn.innerHTML = `
+                    <span class="suggestion-title">${item.title}</span>
+                    <span class="suggestion-meta">${item.category} • ${item.date}</span>
+                `;
+                btn.addEventListener('click', () => applySuggestion(item.title));
+                btn.addEventListener('mousemove', () => {
+                    activeIndex = index;
+                    Array.from(list.querySelectorAll('.suggestion-item')).forEach((el, i) => {
+                        el.classList.toggle('is-active', i === activeIndex);
+                    });
+                });
+                li.appendChild(btn);
+                list.appendChild(li);
+            });
+
+            box.hidden = false;
+            currentItems = items;
+            activeIndex = -1;
+        };
+
+        input.addEventListener('input', () => {
+            clearTimeout(timerId);
+            timerId = setTimeout(() => {
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    clearSuggestions();
+                    return;
+                }
+                fetch(`{% url 'search_suggestions' %}?q=${encodeURIComponent(q)}`)
+                    .then((resp) => resp.json())
+                    .then((data) => renderSuggestions(data.suggestions || []))
+                    .catch(() => clearSuggestions());
+            }, 350);
+        });
+
+        input.addEventListener('keydown', (event) => {
+            if (!currentItems.length) return;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeIndex = (activeIndex + 1) % currentItems.length;
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeIndex = (activeIndex - 1 + currentItems.length) % currentItems.length;
+            } else if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                applySuggestion(currentItems[activeIndex].title);
+                return;
+            } else if (event.key === 'Escape') {
+                clearSuggestions();
+                return;
+            } else {
+                return;
+            }
+
+            if (list) {
+                Array.from(list.querySelectorAll('.suggestion-item')).forEach((el, i) => {
+                    el.classList.toggle('is-active', i === activeIndex);
+                });
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!navCenter) return;
+            if (!navCenter.contains(event.target)) {
+                clearSuggestions();
+            }
+        });
+    });
+})();
+</script>
 
 </body>
 </html>

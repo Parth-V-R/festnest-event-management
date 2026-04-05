@@ -5,7 +5,7 @@
 
 {% block content %}
 {% if search_query %}
-<section class="carousel-section search-results-section">
+<section id="search-results" class="carousel-section search-results-section">
     <div class="container">
         <h2>Search Results for "{{ search_query }}"</h2>
         <p class="search-meta">{{ result_count }} event{{ result_count|pluralize }} found</p>
@@ -25,10 +25,24 @@
                 <div class="upcoming-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                     {% if user.is_authenticated %}
-                        <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                            {% csrf_token %}
-                            <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
-                        </form>
+                        {% if event.id in registered_event_ids %}
+                            <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}?q={{ search_query|urlencode }}#search-results">
+                                <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                            </form>
+                        {% elif event.id in waitlisted_event_ids %}
+                            <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}?q={{ search_query|urlencode }}#search-results">
+                                <button type="submit" class="cta-btn upcoming-btn alt">Leave Waitlist</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                            </form>
+                        {% endif %}
                     {% else %}
                         <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
                     {% endif %}
@@ -78,7 +92,7 @@
     </section>
 </main>
 
-<section class="carousel-section">
+<section id="upcoming-events" class="carousel-section">
     <div class="container">
         <h2>Upcoming Events</h2>
 
@@ -96,10 +110,24 @@
                 <div class="upcoming-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                     {% if user.is_authenticated %}
-                        <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
-                            {% csrf_token %}
-                            <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
-                        </form>
+                        {% if event.id in registered_event_ids %}
+                            <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}#upcoming-events">
+                                <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                            </form>
+                        {% elif event.id in waitlisted_event_ids %}
+                            <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}#upcoming-events">
+                                <button type="submit" class="cta-btn upcoming-btn alt">Leave Waitlist</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                            </form>
+                        {% endif %}
                     {% else %}
                         <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
                     {% endif %}

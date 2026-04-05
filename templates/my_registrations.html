@@ -6,7 +6,7 @@
 {% block content %}
 <section class="carousel-section registrations-section">
     <div class="container">
-        <h2>My Confirmed Registrations</h2>
+        <h2>My Active Registrations</h2>
 
         {% if messages %}
             <div class="message-list centered-message-list">
@@ -17,7 +17,7 @@
         {% endif %}
 
         <div class="carousel-track">
-            {% for event in events %}
+            {% for event in active_events %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
                     <span class="category-pill">{{ event.category|title }}</span>
@@ -36,7 +36,7 @@
                 </div>
             </article>
             {% empty %}
-            <p class="empty-text">You have not registered for any events yet.</p>
+            <p class="empty-text">You have no active registrations.</p>
             {% endfor %}
         </div>
 
@@ -62,6 +62,24 @@
             </article>
             {% empty %}
             <p class="empty-text">You are not on any waitlist.</p>
+            {% endfor %}
+        </div>
+
+        <h2 style="margin-top: 24px;">Past Registrations</h2>
+        <div class="carousel-track">
+            {% for event in past_events %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="date-pill">{{ event.date }}</span>
+                </div>
+
+                <h3>{{ event.title }}</h3>
+                <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+                <p class="registration-note">Event Completed</p>
+            </article>
+            {% empty %}
+            <p class="empty-text">No past registrations yet.</p>
             {% endfor %}
         </div>
     </div>
