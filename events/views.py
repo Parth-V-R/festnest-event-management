@@ -1,7 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Event
+from .models import Event, WaitlistEntry
+from .forms import EventForm
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.db.models import Q
 from django.utils import timezone
@@ -39,22 +40,102 @@ def category_events(request, category):
         'category': category
     })
 
+
 def event_detail(request, id):
     event = get_object_or_404(Event, id=id)
     is_registered = False
+    is_waitlisted = False
     if request.user.is_authenticated:
         is_registered = event.attendees.filter(pk=request.user.pk).exists()
+        is_waitlisted = WaitlistEntry.objects.filter(event=event, user=request.user).exists()
 
     return render(
         request,
         'event_detail.html',
-        {'event': event, 'is_registered': is_registered},
+        {
+            'event': event,
+            'is_registered': is_registered,
+            'is_waitlisted': is_waitlisted,
+            'waitlist_count': event.waitlist_entries.count(),
+            'is_full': event.seats_left == 0,
+        },
     )
+
+
+def is_superuser(user):
+    return user.is_superuser
+
+
+@login_required
+@user_passes_test(is_superuser)
+def manage_events(request):
+    events = Event.objects.all().order_by('date')
+    return render(request, 'manage_events.html', {'events': events})
+
+
+@login_required
+@user_passes_test(is_superuser)
+def create_event(request):
+    if request.method == 'POST':
+        form = EventForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Event created successfully.')
+            return redirect('manage_events')
+    else:
+        form = EventForm()
+
+    return render(
+        request,
+        'event_form.html',
+        {'form': form, 'page_title': 'Create Event', 'button_label': 'Create Event'},
+    )
+
+
+@login_required
+@user_passes_test(is_superuser)
+def edit_event(request, id):
+    event = get_object_or_404(Event, id=id)
+    if request.method == 'POST':
+        form = EventForm(request.POST, instance=event)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Event updated successfully.')
+            return redirect('manage_events')
+    else:
+        form = EventForm(instance=event)
+
+    return render(
+        request,
+        'event_form.html',
+        {'form': form, 'page_title': 'Edit Event', 'button_label': 'Update Event'},
+    )
+
+
+@login_required
+@user_passes_test(is_superuser)
+@require_POST
+def delete_event(request, id):
+    event = get_object_or_404(Event, id=id)
+    event.delete()
+    messages.success(request, 'Event deleted successfully.')
+    return redirect('manage_events')
+
 
 @login_required
 def my_registrations(request):
-    events = Event.objects.filter(attendees=request.user).order_by('date')
-    return render(request, 'my_registrations.html', {'events': events})
+    registered_events = Event.objects.filter(attendees=request.user).order_by('date')
+    waitlisted_entries = (
+        WaitlistEntry.objects
+        .filter(user=request.user)
+        .select_related('event')
+        .order_by('event__date', 'created_at')
+    )
+    return render(
+        request,
+        'my_registrations.html',
+        {'events': registered_events, 'waitlisted_entries': waitlisted_entries},
+    )
 
 
 @login_required
@@ -67,9 +148,17 @@ def register_event(request, id):
 
     if event.attendees.filter(pk=request.user.pk).exists():
         messages.info(request, 'You are already registered for this event.')
+    elif WaitlistEntry.objects.filter(event=event, user=request.user).exists():
+        messages.info(request, 'You are already on the waitlist for this event.')
     else:
-        event.attendees.add(request.user)
-        messages.success(request, 'Registration successful.')
+        if event.seats_left > 0:
+            event.attendees.add(request.user)
+            messages.success(request, 'Registration successful.')
+        elif event.waitlist_enabled:
+            WaitlistEntry.objects.create(event=event, user=request.user)
+            messages.info(request, 'Event is full. You have been added to the waitlist.')
+        else:
+            messages.error(request, 'Event is full and waitlist is disabled.')
     return redirect('event_detail', id=id)
 
 
@@ -77,9 +166,19 @@ def register_event(request, id):
 @require_POST
 def unregister_event(request, id):
     event = get_object_or_404(Event, id=id)
-    if event.attendees.filter(pk=request.user.pk).exists():
+    was_registered = event.attendees.filter(pk=request.user.pk).exists()
+    if was_registered:
         event.attendees.remove(request.user)
         messages.success(request, 'You have been removed from this event.')
+
+        promoted = event.waitlist_entries.select_related('user').first()
+        if promoted:
+            event.attendees.add(promoted.user)
+            promoted.delete()
+            messages.info(request, 'A waitlisted participant has been promoted.')
+    elif WaitlistEntry.objects.filter(event=event, user=request.user).exists():
+        WaitlistEntry.objects.filter(event=event, user=request.user).delete()
+        messages.success(request, 'You have been removed from the waitlist.')
     else:
         messages.info(request, 'You are not registered for this event.')
 
