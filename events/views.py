@@ -24,6 +24,11 @@ def build_team_state(user, events_qs=None):
     return team_map, team_event_ids, submitted_team_event_ids
 
 
+def replace_flash(request, level, text):
+    list(messages.get_messages(request))
+    messages.add_message(request, level, text)
+
+
 def home(request):
     today = timezone.localdate()
     search_query = request.GET.get('q', '').strip()
@@ -72,12 +77,13 @@ def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     if len(query) < 2:
         return JsonResponse({'suggestions': []})
+    today = timezone.localdate()
 
     suggestions_qs = (
         Event.objects
         .filter(
-            Q(title__icontains=query)
-            | Q(category__icontains=query)
+            (Q(title__icontains=query) | Q(category__icontains=query)),
+            date__gte=today,
         )
         .order_by('date')
         .values('title', 'category', 'date')[:8]
@@ -96,7 +102,7 @@ def search_suggestions(request):
 
 def category_events(request, category):
     today = timezone.localdate()
-    events = Event.objects.filter(category=category).order_by('date')
+    events = Event.objects.filter(category=category, date__gte=today).order_by('date')
     category_titles = {
         'cultural': 'Cultural Events',
         'technical': 'Technical Events',
@@ -273,29 +279,33 @@ def my_registrations(request):
 def register_event(request, id):
     event = get_object_or_404(Event, id=id)
     if event.is_team_event:
-        messages.info(request, 'This is a team event. Please create or join a team from event details.')
+        replace_flash(
+            request,
+            messages.INFO,
+            'This is a team event. Please create or join a team from event details.',
+        )
         return redirect('event_detail', id=id)
 
     if event.date < timezone.localdate():
-        messages.error(request, 'Registration is closed for past events.')
+        replace_flash(request, messages.ERROR, 'Registration is closed for past events.')
         return redirect('event_detail', id=id)
 
     if event.attendees.filter(pk=request.user.pk).exists():
-        messages.info(request, 'You are already registered for this event.')
+        replace_flash(request, messages.INFO, 'You are already registered for this event.')
     elif WaitlistEntry.objects.filter(event=event, user=request.user).exists():
-        messages.info(request, 'You are already on the waitlist for this event.')
+        replace_flash(request, messages.INFO, 'You are already on the waitlist for this event.')
     else:
         if not event.capacity_limited:
             event.attendees.add(request.user)
-            messages.success(request, 'Registration successful.')
+            replace_flash(request, messages.SUCCESS, 'Enrollment successful.')
         elif event.seats_left > 0:
             event.attendees.add(request.user)
-            messages.success(request, 'Registration successful.')
+            replace_flash(request, messages.SUCCESS, 'Enrollment successful.')
         elif event.waitlist_enabled:
             WaitlistEntry.objects.create(event=event, user=request.user)
-            messages.info(request, 'Event is full. You have been added to the waitlist.')
+            replace_flash(request, messages.INFO, 'Event is full. You have been added to the waitlist.')
         else:
-            messages.error(request, 'Event is full and waitlist is disabled.')
+            replace_flash(request, messages.ERROR, 'Event is full and waitlist is disabled.')
     return redirect('event_detail', id=id)
 
 
@@ -305,7 +315,7 @@ def unregister_event(request, id):
     today = timezone.localdate()
     event = get_object_or_404(Event, id=id)
     if event.is_team_event:
-        messages.info(request, 'For team events, use team actions from event details.')
+        replace_flash(request, messages.INFO, 'For team events, use team actions from event details.')
         next_url = request.POST.get('next', '')
         if next_url and url_has_allowed_host_and_scheme(
             url=next_url,
@@ -316,7 +326,7 @@ def unregister_event(request, id):
         return redirect('event_detail', id=id)
 
     if event.date < today:
-        messages.info(request, 'Past events are kept as history and cannot be unregistered.')
+        replace_flash(request, messages.INFO, 'Past events are kept as history and cannot be dropped.')
         next_url = request.POST.get('next', '')
         if next_url and url_has_allowed_host_and_scheme(
             url=next_url,
@@ -329,18 +339,19 @@ def unregister_event(request, id):
     was_registered = event.attendees.filter(pk=request.user.pk).exists()
     if was_registered:
         event.attendees.remove(request.user)
-        messages.success(request, 'You have been removed from this event.')
+        message_text = 'You have been removed from this event.'
 
         promoted = event.waitlist_entries.select_related('user').first()
         if promoted:
             event.attendees.add(promoted.user)
             promoted.delete()
-            messages.info(request, 'A waitlisted participant has been promoted.')
+            message_text = 'Dropped successfully. A waitlisted participant has been promoted.'
+        replace_flash(request, messages.SUCCESS, message_text)
     elif WaitlistEntry.objects.filter(event=event, user=request.user).exists():
         WaitlistEntry.objects.filter(event=event, user=request.user).delete()
-        messages.success(request, 'You have been removed from the waitlist.')
+        replace_flash(request, messages.SUCCESS, 'You have been removed from the waitlist.')
     else:
-        messages.info(request, 'You are not registered for this event.')
+        replace_flash(request, messages.INFO, 'You are not enrolled for this event.')
     next_url = request.POST.get('next', '')
     if next_url and url_has_allowed_host_and_scheme(
         url=next_url,

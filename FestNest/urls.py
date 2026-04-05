@@ -16,7 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from events import views
 from accounts import views as acc_views
 
@@ -38,35 +37,17 @@ urlpatterns = [
     path('signup/', acc_views.signup, name='signup'),
     path('login/', acc_views.user_login, name='login'),
     path('forgot-password/', acc_views.forgot_password_options, name='forgot_password_options'),
+    path('forgot-password/email/', acc_views.forgot_password_email, name='forgot_password_email'),
+    path(
+        'forgot-password/email/verify/',
+        acc_views.forgot_password_email_verify,
+        name='forgot_password_email_verify',
+    ),
     path('forgot-password/mobile/', acc_views.forgot_password_mobile, name='forgot_password_mobile'),
     path(
         'forgot-password/mobile/verify/',
         acc_views.forgot_password_mobile_verify,
         name='forgot_password_mobile_verify',
-    ),
-    path(
-        'forgot-password/email/',
-        auth_views.PasswordResetView.as_view(
-            template_name='registration/password_reset_form.html',
-            email_template_name='registration/password_reset_email.html',
-            subject_template_name='registration/password_reset_subject.txt',
-        ),
-        name='password_reset',
-    ),
-    path(
-        'forgot-password/email/done/',
-        auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'),
-        name='password_reset_done',
-    ),
-    path(
-        'forgot-password/email/<uidb64>/<token>/',
-        auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'),
-        name='password_reset_confirm',
-    ),
-    path(
-        'forgot-password/email/complete/',
-        auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'),
-        name='password_reset_complete',
     ),
     path('logout/', acc_views.user_logout, name='logout'),
     path('profile/', acc_views.profile_view, name='profile'),

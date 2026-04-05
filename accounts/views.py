@@ -32,7 +32,11 @@ def user_login(request):
             return redirect('home')
         messages.error(request, 'Invalid username or password.')
 
-    return render(request, 'login.html')
+    response = render(request, 'login.html')
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 def user_logout(request):
     logout(request)
@@ -213,6 +217,123 @@ def forgot_password_options(request):
     return render(request, 'forgot_password_options.html')
 
 
+def _redirect_after_password_reset(request, user, started_from_profile=False):
+    if started_from_profile:
+        if request.user.is_authenticated and request.user.pk == user.pk:
+            update_session_auth_hash(request, user)
+        else:
+            login(request, user)
+        messages.success(request, 'Password reset successful.')
+        return redirect('profile')
+    messages.success(request, 'Password reset successful. Please login.')
+    return redirect('login')
+
+
+def forgot_password_email(request):
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()
+        if not identifier:
+            messages.error(request, 'Enter username or email.')
+            return redirect('forgot_password_email')
+
+        user = User.objects.filter(username__iexact=identifier).first()
+        if not user:
+            user = User.objects.filter(email__iexact=identifier).first()
+        if not user:
+            messages.error(request, 'Account not found.')
+            return redirect('forgot_password_email')
+        if not user.email:
+            messages.error(request, 'This account has no Email ID.')
+            return redirect('forgot_password_email')
+
+        profile, _ = Profile.objects.get_or_create(user=user)
+        otp = f'{secrets.randbelow(1000000):06d}'
+        profile.email_reset_otp_code = make_password(otp)
+        profile.email_reset_otp_expires_at = timezone.now() + timedelta(minutes=10)
+        profile.save(update_fields=['email_reset_otp_code', 'email_reset_otp_expires_at'])
+        request.session['password_reset_email_user_id'] = user.id
+        request.session['password_reset_origin_user_id'] = request.user.id if request.user.is_authenticated else None
+
+        send_mail(
+            subject='FestNest Password Reset OTP',
+            message=f'Hi {user.username}, your FestNest password reset OTP is: {otp}',
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@festnest.local'),
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+
+        messages.success(request, 'OTP sent to your Email ID.')
+        if settings.DEBUG:
+            messages.info(request, f'DEBUG EMAIL OTP: {otp}')
+        return redirect('forgot_password_email_verify')
+
+    return render(request, 'forgot_password_email.html')
+
+
+def forgot_password_email_verify(request):
+    user_id = request.session.get('password_reset_email_user_id')
+    if not user_id:
+        messages.error(request, 'Start email reset first.')
+        return redirect('forgot_password_email')
+
+    user = User.objects.filter(pk=user_id).first()
+    profile = Profile.objects.filter(user=user).first() if user else None
+    if not user or not profile:
+        messages.error(request, 'Reset session is invalid. Please try again.')
+        request.session.pop('password_reset_email_user_id', None)
+        return redirect('forgot_password_email')
+
+    if request.method == 'POST':
+        otp = request.POST.get('otp', '').strip()
+        new_password1 = request.POST.get('new_password1', '')
+        new_password2 = request.POST.get('new_password2', '')
+
+        if not otp:
+            messages.error(request, 'Enter OTP.')
+            return redirect('forgot_password_email_verify')
+        if not profile.email_reset_otp_code or not profile.email_reset_otp_expires_at:
+            messages.error(request, 'Request OTP first.')
+            return redirect('forgot_password_email')
+        if timezone.now() > profile.email_reset_otp_expires_at:
+            profile.email_reset_otp_code = ''
+            profile.email_reset_otp_expires_at = None
+            profile.save(update_fields=['email_reset_otp_code', 'email_reset_otp_expires_at'])
+            messages.error(request, 'OTP expired. Request a new OTP.')
+            return redirect('forgot_password_email')
+        if not check_password(otp, profile.email_reset_otp_code):
+            messages.error(request, 'Invalid OTP.')
+            return redirect('forgot_password_email_verify')
+        if new_password1 != new_password2:
+            messages.error(request, 'New passwords do not match.')
+            return redirect('forgot_password_email_verify')
+        try:
+            validate_password(new_password1, user=user)
+        except ValidationError as exc:
+            for error in exc.messages:
+                messages.error(request, error)
+            return redirect('forgot_password_email_verify')
+
+        origin_user_id = request.session.get('password_reset_origin_user_id')
+        started_from_profile = bool(
+            (origin_user_id and origin_user_id == user.pk)
+            or (request.user.is_authenticated and request.user.pk == user.pk)
+        )
+        user.set_password(new_password1)
+        user.save(update_fields=['password'])
+        profile.email_reset_otp_code = ''
+        profile.email_reset_otp_expires_at = None
+        profile.save(update_fields=['email_reset_otp_code', 'email_reset_otp_expires_at'])
+        request.session.pop('password_reset_email_user_id', None)
+        request.session.pop('password_reset_origin_user_id', None)
+        return _redirect_after_password_reset(request, user, started_from_profile)
+
+    return render(
+        request,
+        'forgot_password_email_verify.html',
+        {'email': user.email},
+    )
+
+
 def forgot_password_mobile(request):
     if request.method == 'POST':
         identifier = request.POST.get('identifier', '').strip()
@@ -241,6 +362,7 @@ def forgot_password_mobile(request):
         profile.password_reset_otp_expires_at = timezone.now() + timedelta(minutes=10)
         profile.save(update_fields=['password_reset_otp_code', 'password_reset_otp_expires_at'])
         request.session['password_reset_mobile_user_id'] = user.id
+        request.session['password_reset_origin_user_id'] = request.user.id if request.user.is_authenticated else None
         messages.success(request, 'OTP sent to your verified mobile number.')
         if settings.DEBUG:
             messages.info(request, f'DEBUG RESET OTP: {otp}')
@@ -292,14 +414,19 @@ def forgot_password_mobile_verify(request):
                 messages.error(request, error)
             return redirect('forgot_password_mobile_verify')
 
+        origin_user_id = request.session.get('password_reset_origin_user_id')
+        started_from_profile = bool(
+            (origin_user_id and origin_user_id == user.pk)
+            or (request.user.is_authenticated and request.user.pk == user.pk)
+        )
         user.set_password(new_password1)
         user.save(update_fields=['password'])
         profile.password_reset_otp_code = ''
         profile.password_reset_otp_expires_at = None
         profile.save(update_fields=['password_reset_otp_code', 'password_reset_otp_expires_at'])
         request.session.pop('password_reset_mobile_user_id', None)
-        messages.success(request, 'Password reset successful. Please login.')
-        return redirect('login')
+        request.session.pop('password_reset_origin_user_id', None)
+        return _redirect_after_password_reset(request, user, started_from_profile)
 
     return render(
         request,

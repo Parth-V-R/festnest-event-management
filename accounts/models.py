@@ -17,6 +17,8 @@ class Profile(models.Model):
     phone_otp_expires_at = models.DateTimeField(blank=True, null=True)
     password_reset_otp_code = models.CharField(max_length=128, blank=True)
     password_reset_otp_expires_at = models.DateTimeField(blank=True, null=True)
+    email_reset_otp_code = models.CharField(max_length=128, blank=True)
+    email_reset_otp_expires_at = models.DateTimeField(blank=True, null=True)
     bio = models.TextField(blank=True)
 
     def __str__(self):

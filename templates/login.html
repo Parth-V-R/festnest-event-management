@@ -17,10 +17,10 @@
             </div>
         {% endif %}
 
-        <form method="post" class="auth-form">
+        <form method="post" class="auth-form" id="loginForm" autocomplete="off">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Username" autocomplete="username" required>
-            <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+            <input type="text" name="username" placeholder="Username" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+            <input type="password" name="password" placeholder="Password" autocomplete="new-password" required>
             <button type="submit" class="cta-btn auth-submit">Login</button>
         </form>
 
@@ -28,4 +28,20 @@
         <p class="auth-link">Don't have an account? <a href="{% url 'signup' %}">Signup</a></p>
     </div>
 </div>
+<script>
+(() => {
+    const form = document.getElementById('loginForm');
+    if (!form) return;
+
+    const clearFields = () => {
+        const username = form.querySelector('input[name="username"]');
+        const password = form.querySelector('input[name="password"]');
+        if (username) username.value = '';
+        if (password) password.value = '';
+    };
+
+    window.addEventListener('pageshow', clearFields);
+    clearFields();
+})();
+</script>
 {% endblock %}

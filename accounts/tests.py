@@ -269,3 +269,75 @@ class AccountsViewTests(TestCase):
         self.assertFalse(bool(profile.password_reset_otp_code))
         self.assertIsNone(profile.password_reset_otp_expires_at)
         self.assertTrue(self.client.login(username='alice', password='BrandNewPass123!'))
+
+    def test_email_forgot_password_sends_otp(self):
+        user = self.user_model.objects.create_user(
+            username='alice',
+            password='safePass123!',
+            email='alice@example.com',
+        )
+        profile = Profile.objects.create(user=user)
+
+        response = self.client.post(reverse('forgot_password_email'), {'identifier': 'alice'})
+
+        self.assertRedirects(response, reverse('forgot_password_email_verify'))
+        profile.refresh_from_db()
+        self.assertTrue(bool(profile.email_reset_otp_code))
+        self.assertIsNotNone(profile.email_reset_otp_expires_at)
+
+    def test_email_forgot_password_verify_resets_password(self):
+        user = self.user_model.objects.create_user(
+            username='alice',
+            password='safePass123!',
+            email='alice@example.com',
+        )
+        profile = Profile.objects.create(
+            user=user,
+            email_reset_otp_code=make_password('111222'),
+            email_reset_otp_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        session = self.client.session
+        session['password_reset_email_user_id'] = user.id
+        session.save()
+
+        response = self.client.post(
+            reverse('forgot_password_email_verify'),
+            {
+                'otp': '111222',
+                'new_password1': 'AnotherNewPass123!',
+                'new_password2': 'AnotherNewPass123!',
+            },
+        )
+
+        self.assertRedirects(response, reverse('login'))
+        profile.refresh_from_db()
+        self.assertFalse(bool(profile.email_reset_otp_code))
+        self.assertIsNone(profile.email_reset_otp_expires_at)
+        self.assertTrue(self.client.login(username='alice', password='AnotherNewPass123!'))
+
+    def test_logged_in_email_reset_redirects_to_profile(self):
+        user = self.user_model.objects.create_user(
+            username='alice',
+            password='safePass123!',
+            email='alice@example.com',
+        )
+        Profile.objects.create(
+            user=user,
+            email_reset_otp_code=make_password('333444'),
+            email_reset_otp_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        self.client.login(username='alice', password='safePass123!')
+        session = self.client.session
+        session['password_reset_email_user_id'] = user.id
+        session.save()
+
+        response = self.client.post(
+            reverse('forgot_password_email_verify'),
+            {
+                'otp': '333444',
+                'new_password1': 'LatestPass123!',
+                'new_password2': 'LatestPass123!',
+            },
+        )
+
+        self.assertRedirects(response, reverse('profile'))
