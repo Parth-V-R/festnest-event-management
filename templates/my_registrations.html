@@ -6,7 +6,7 @@
 {% block content %}
 <section class="carousel-section registrations-section">
     <div class="container">
-        <h2>My Registrations</h2>
+        <h2>My Confirmed Registrations</h2>
 
         {% if messages %}
             <div class="message-list centered-message-list">
@@ -37,6 +37,31 @@
             </article>
             {% empty %}
             <p class="empty-text">You have not registered for any events yet.</p>
+            {% endfor %}
+        </div>
+
+        <h2 style="margin-top: 24px;">My Waitlist</h2>
+        <div class="carousel-track">
+            {% for entry in waitlisted_entries %}
+            <article class="upcoming-card">
+                <div class="upcoming-top">
+                    <span class="category-pill">{{ entry.event.category|title }}</span>
+                    <span class="date-pill">{{ entry.event.date }}</span>
+                </div>
+
+                <h3>{{ entry.event.title }}</h3>
+                <p class="upcoming-desc">{{ entry.event.description|truncatechars:95 }}</p>
+
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' entry.event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    <form method="post" action="{% url 'unregister_event' entry.event.id %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="cta-btn upcoming-btn alt">Leave Waitlist</button>
+                    </form>
+                </div>
+            </article>
+            {% empty %}
+            <p class="empty-text">You are not on any waitlist.</p>
             {% endfor %}
         </div>
     </div>
