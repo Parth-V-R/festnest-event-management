@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from datetime import date, timedelta
 
-from .models import Event, WaitlistEntry
+from .models import Event, WaitlistEntry, Team
 
 
 class EventRegistrationTests(TestCase):
@@ -314,6 +314,9 @@ class EventManagementTests(TestCase):
                 'description': 'Created by admin.',
                 'capacity': 150,
                 'waitlist_enabled': True,
+                'is_team_event': False,
+                'min_team_size': 2,
+                'max_team_size': 4,
             },
         )
         self.assertRedirects(create_response, reverse('manage_events'))
@@ -329,6 +332,9 @@ class EventManagementTests(TestCase):
                 'description': 'Updated by admin.',
                 'capacity': 80,
                 'waitlist_enabled': False,
+                'is_team_event': False,
+                'min_team_size': 2,
+                'max_team_size': 4,
             },
         )
         self.assertRedirects(edit_response, reverse('manage_events'))
@@ -340,3 +346,62 @@ class EventManagementTests(TestCase):
         delete_response = self.client.post(reverse('delete_event', args=[created.id]))
         self.assertRedirects(delete_response, reverse('manage_events'))
         self.assertFalse(Event.objects.filter(id=created.id).exists())
+
+
+class TeamEventTests(TestCase):
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.user1 = self.user_model.objects.create_user(username='teamlead', password='safePass123!')
+        self.user2 = self.user_model.objects.create_user(username='member2', password='safePass123!')
+        self.user3 = self.user_model.objects.create_user(username='member3', password='safePass123!')
+        self.team_event = Event.objects.create(
+            title='Inter College Hack Relay',
+            category='technical',
+            date=date.today() + timedelta(days=10),
+            description='Team coding event.',
+            is_team_event=True,
+            min_team_size=2,
+            max_team_size=4,
+        )
+
+    def test_create_team_and_join_by_code(self):
+        self.client.login(username='teamlead', password='safePass123!')
+        create_response = self.client.post(
+            reverse('create_team', args=[self.team_event.id]),
+            {'team_name': 'CodeCrushers'},
+        )
+        self.assertRedirects(create_response, reverse('event_detail', args=[self.team_event.id]))
+        team = Team.objects.get(event=self.team_event, name='CodeCrushers')
+        self.assertTrue(team.members.filter(pk=self.user1.pk).exists())
+
+        self.client.logout()
+        self.client.login(username='member2', password='safePass123!')
+        join_response = self.client.post(
+            reverse('join_team', args=[self.team_event.id]),
+            {'join_code': team.join_code},
+        )
+        self.assertRedirects(join_response, reverse('event_detail', args=[self.team_event.id]))
+        team.refresh_from_db()
+        self.assertTrue(team.members.filter(pk=self.user2.pk).exists())
+
+    def test_submit_team_requires_minimum_members(self):
+        self.client.login(username='teamlead', password='safePass123!')
+        self.client.post(reverse('create_team', args=[self.team_event.id]), {'team_name': 'SoloTeam'})
+        team = Team.objects.get(event=self.team_event, name='SoloTeam')
+
+        submit_response = self.client.post(reverse('submit_team', args=[self.team_event.id]))
+        self.assertRedirects(submit_response, reverse('event_detail', args=[self.team_event.id]))
+        team.refresh_from_db()
+        self.assertFalse(team.is_submitted)
+
+        team.members.add(self.user2)
+        submit_response_ok = self.client.post(reverse('submit_team', args=[self.team_event.id]))
+        self.assertRedirects(submit_response_ok, reverse('event_detail', args=[self.team_event.id]))
+        team.refresh_from_db()
+        self.assertTrue(team.is_submitted)
+
+    def test_individual_register_blocked_for_team_event(self):
+        self.client.login(username='member3', password='safePass123!')
+        response = self.client.post(reverse('register_event', args=[self.team_event.id]))
+        self.assertRedirects(response, reverse('event_detail', args=[self.team_event.id]))
+        self.assertFalse(self.team_event.attendees.filter(pk=self.user3.pk).exists())

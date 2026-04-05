@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from .models import Event, WaitlistEntry
+from .models import Event, WaitlistEntry, Team
 from .forms import EventForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -8,6 +8,20 @@ from django.views.decorators.http import require_POST
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+
+
+def build_team_state(user, events_qs=None):
+    if not user.is_authenticated:
+        return {}, set(), set()
+
+    team_qs = Team.objects.filter(members=user).select_related('leader')
+    if events_qs is not None:
+        team_qs = team_qs.filter(event__in=events_qs)
+
+    team_map = {team.event_id: team for team in team_qs}
+    team_event_ids = set(team_map.keys())
+    submitted_team_event_ids = {event_id for event_id, team in team_map.items() if team.is_submitted}
+    return team_map, team_event_ids, submitted_team_event_ids
 
 
 def home(request):
@@ -18,6 +32,8 @@ def home(request):
     result_count = 0
     registered_event_ids = set()
     waitlisted_event_ids = set()
+    user_team_event_ids = set()
+    submitted_team_event_ids = set()
 
     if search_query:
         searched_events = upcoming_events.filter(
@@ -34,6 +50,7 @@ def home(request):
         waitlisted_event_ids = set(
             WaitlistEntry.objects.filter(user=request.user).values_list('event_id', flat=True),
         )
+        _, user_team_event_ids, submitted_team_event_ids = build_team_state(request.user, upcoming_events)
 
     return render(
         request,
@@ -45,6 +62,8 @@ def home(request):
             'result_count': result_count,
             'registered_event_ids': registered_event_ids,
             'waitlisted_event_ids': waitlisted_event_ids,
+            'user_team_event_ids': user_team_event_ids,
+            'submitted_team_event_ids': submitted_team_event_ids,
         },
     )
 
@@ -79,6 +98,8 @@ def category_events(request, category):
     events = Event.objects.filter(category=category).order_by('date')
     registered_event_ids = set()
     waitlisted_event_ids = set()
+    user_team_event_ids = set()
+    submitted_team_event_ids = set()
     if request.user.is_authenticated:
         registered_event_ids = set(
             Event.objects.filter(attendees=request.user).values_list('id', flat=True),
@@ -86,11 +107,14 @@ def category_events(request, category):
         waitlisted_event_ids = set(
             WaitlistEntry.objects.filter(user=request.user).values_list('event_id', flat=True),
         )
+        _, user_team_event_ids, submitted_team_event_ids = build_team_state(request.user, events)
     return render(request, 'category.html', {
         'events': events,
         'category': category,
         'registered_event_ids': registered_event_ids,
         'waitlisted_event_ids': waitlisted_event_ids,
+        'user_team_event_ids': user_team_event_ids,
+        'submitted_team_event_ids': submitted_team_event_ids,
         'today': today,
     })
 
@@ -100,9 +124,20 @@ def event_detail(request, id):
     event = get_object_or_404(Event, id=id)
     is_registered = False
     is_waitlisted = False
+    user_team = None
+    is_team_leader = False
     if request.user.is_authenticated:
         is_registered = event.attendees.filter(pk=request.user.pk).exists()
         is_waitlisted = WaitlistEntry.objects.filter(event=event, user=request.user).exists()
+        if event.is_team_event:
+            user_team = (
+                Team.objects
+                .filter(event=event, members=request.user)
+                .select_related('leader')
+                .prefetch_related('members')
+                .first()
+            )
+            is_team_leader = bool(user_team and user_team.leader_id == request.user.id)
 
     return render(
         request,
@@ -114,6 +149,9 @@ def event_detail(request, id):
             'waitlist_count': event.waitlist_entries.count(),
             'is_full': event.seats_left == 0,
             'is_past': event.date < today,
+            'user_team': user_team,
+            'is_team_leader': is_team_leader,
+            'submitted_team_count': event.teams.filter(is_submitted=True).count(),
         },
     )
 
@@ -190,6 +228,22 @@ def my_registrations(request):
         .select_related('event')
         .order_by('event__date', 'created_at')
     )
+    team_registrations = (
+        Team.objects
+        .filter(members=request.user, is_submitted=True)
+        .select_related('event', 'leader')
+        .prefetch_related('members')
+        .order_by('event__date')
+    )
+    active_team_registrations = [team for team in team_registrations if team.event.date >= today]
+    past_team_registrations = [team for team in team_registrations if team.event.date < today]
+    active_teams_in_progress = (
+        Team.objects
+        .filter(members=request.user, is_submitted=False, event__date__gte=today)
+        .select_related('event', 'leader')
+        .prefetch_related('members')
+        .order_by('event__date', 'created_at')
+    )
     return render(
         request,
         'my_registrations.html',
@@ -197,6 +251,9 @@ def my_registrations(request):
             'active_events': active_registered_events,
             'past_events': past_registered_events,
             'waitlisted_entries': waitlisted_entries,
+            'active_team_registrations': active_team_registrations,
+            'past_team_registrations': past_team_registrations,
+            'active_teams_in_progress': active_teams_in_progress,
         },
     )
 
@@ -205,6 +262,10 @@ def my_registrations(request):
 @require_POST
 def register_event(request, id):
     event = get_object_or_404(Event, id=id)
+    if event.is_team_event:
+        messages.info(request, 'This is a team event. Please create or join a team from event details.')
+        return redirect('event_detail', id=id)
+
     if event.date < timezone.localdate():
         messages.error(request, 'Registration is closed for past events.')
         return redirect('event_detail', id=id)
@@ -230,6 +291,17 @@ def register_event(request, id):
 def unregister_event(request, id):
     today = timezone.localdate()
     event = get_object_or_404(Event, id=id)
+    if event.is_team_event:
+        messages.info(request, 'For team events, use team actions from event details.')
+        next_url = request.POST.get('next', '')
+        if next_url and url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('event_detail', id=id)
+
     if event.date < today:
         messages.info(request, 'Past events are kept as history and cannot be unregistered.')
         next_url = request.POST.get('next', '')
@@ -265,3 +337,127 @@ def unregister_event(request, id):
         return redirect(next_url)
 
     return redirect('my_registrations')
+
+
+@login_required
+@require_POST
+def create_team(request, id):
+    event = get_object_or_404(Event, id=id)
+    if not event.is_team_event:
+        messages.error(request, 'This event does not support team registration.')
+        return redirect('event_detail', id=id)
+    if event.date < timezone.localdate():
+        messages.error(request, 'Team creation is closed for past events.')
+        return redirect('event_detail', id=id)
+
+    team_name = request.POST.get('team_name', '').strip()
+    if len(team_name) < 3:
+        messages.error(request, 'Team name must be at least 3 characters long.')
+        return redirect('event_detail', id=id)
+    if Team.objects.filter(event=event, members=request.user).exists():
+        messages.info(request, 'You are already part of a team for this event.')
+        return redirect('event_detail', id=id)
+    if Team.objects.filter(event=event, name__iexact=team_name).exists():
+        messages.error(request, 'A team with this name already exists for this event.')
+        return redirect('event_detail', id=id)
+
+    team = Team.objects.create(event=event, name=team_name, leader=request.user)
+    team.members.add(request.user)
+    messages.success(request, f'Team created. Share invite code: {team.join_code}')
+    return redirect('event_detail', id=id)
+
+
+@login_required
+@require_POST
+def join_team(request, id):
+    event = get_object_or_404(Event, id=id)
+    if not event.is_team_event:
+        messages.error(request, 'This event does not support team registration.')
+        return redirect('event_detail', id=id)
+    if event.date < timezone.localdate():
+        messages.error(request, 'Joining teams is closed for past events.')
+        return redirect('event_detail', id=id)
+    if Team.objects.filter(event=event, members=request.user).exists():
+        messages.info(request, 'You are already part of a team for this event.')
+        return redirect('event_detail', id=id)
+
+    join_code = request.POST.get('join_code', '').strip().upper()
+    if not join_code:
+        messages.error(request, 'Enter a valid invite code.')
+        return redirect('event_detail', id=id)
+
+    team = Team.objects.filter(event=event, join_code=join_code).prefetch_related('members').first()
+    if not team:
+        messages.error(request, 'No team found with that invite code.')
+        return redirect('event_detail', id=id)
+    if team.is_submitted:
+        messages.info(request, 'This team is already submitted.')
+        return redirect('event_detail', id=id)
+    if team.member_count >= event.max_team_size:
+        messages.error(request, 'This team is already full.')
+        return redirect('event_detail', id=id)
+
+    team.members.add(request.user)
+    messages.success(request, f'Joined team "{team.name}".')
+    return redirect('event_detail', id=id)
+
+
+@login_required
+@require_POST
+def leave_team(request, id):
+    event = get_object_or_404(Event, id=id)
+    team = Team.objects.filter(event=event, members=request.user).prefetch_related('members').first()
+    if not team:
+        messages.info(request, 'You are not part of a team for this event.')
+        return redirect('event_detail', id=id)
+    if team.is_submitted:
+        messages.info(request, 'Submitted teams cannot be modified.')
+        return redirect('event_detail', id=id)
+
+    team.members.remove(request.user)
+    remaining_members = list(team.members.all())
+    if not remaining_members:
+        team.delete()
+        messages.success(request, 'Team deleted because it has no remaining members.')
+        return redirect('event_detail', id=id)
+
+    if team.leader_id == request.user.id:
+        team.leader = remaining_members[0]
+        team.save(update_fields=['leader'])
+        messages.success(request, 'You left the team. Leadership was transferred.')
+    else:
+        messages.success(request, 'You left the team.')
+    return redirect('event_detail', id=id)
+
+
+@login_required
+@require_POST
+def submit_team(request, id):
+    event = get_object_or_404(Event, id=id)
+    if not event.is_team_event:
+        messages.error(request, 'This event does not support team registration.')
+        return redirect('event_detail', id=id)
+    if event.date < timezone.localdate():
+        messages.error(request, 'Submission is closed for past events.')
+        return redirect('event_detail', id=id)
+
+    team = Team.objects.filter(event=event, leader=request.user).prefetch_related('members').first()
+    if not team:
+        messages.error(request, 'Only team leaders can submit a team.')
+        return redirect('event_detail', id=id)
+    if team.is_submitted:
+        messages.info(request, 'This team is already submitted.')
+        return redirect('event_detail', id=id)
+
+    member_count = team.member_count
+    if member_count < event.min_team_size or member_count > event.max_team_size:
+        messages.error(
+            request,
+            f'Team size must be between {event.min_team_size} and {event.max_team_size}.',
+        )
+        return redirect('event_detail', id=id)
+
+    team.is_submitted = True
+    team.save(update_fields=['is_submitted'])
+    messages.success(request, 'Team registration submitted successfully.')
+    return redirect('event_detail', id=id)
