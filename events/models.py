@@ -10,12 +10,14 @@ class Event(models.Model):
         ('technical', 'Technical'),
         ('sports', 'Sports'),
         ('nss', 'NSS'),
+        ('other', 'Other'),
     ]
 
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     date = models.DateField()
     description = models.TextField()
+    capacity_limited = models.BooleanField(default=True)
     capacity = models.PositiveIntegerField(default=100)
     waitlist_enabled = models.BooleanField(default=True)
     is_team_event = models.BooleanField(default=False)
@@ -29,7 +31,13 @@ class Event(models.Model):
 
     @property
     def seats_left(self):
+        if not self.capacity_limited:
+            return None
         return max(self.capacity - self.attendees.count(), 0)
+
+    @property
+    def is_full(self):
+        return self.capacity_limited and self.seats_left == 0
 
 
 class WaitlistEntry(models.Model):

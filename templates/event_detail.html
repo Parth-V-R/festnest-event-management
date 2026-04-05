@@ -24,9 +24,11 @@
                 <p><strong>Team Size:</strong> {{ event.min_team_size }}-{{ event.max_team_size }}</p>
                 <p><strong>Submitted Teams:</strong> {{ submitted_team_count }}</p>
             {% else %}
-                <p><strong>Capacity:</strong> {{ event.capacity }}</p>
-                <p><strong>Seats Left:</strong> {{ event.seats_left }}</p>
-                <p><strong>Waitlist:</strong> {{ waitlist_count }}</p>
+                {% if event.capacity_limited %}
+                    <p><strong>Capacity:</strong> {{ event.capacity }}</p>
+                    <p><strong>Seats Left:</strong> {{ event.seats_left }}</p>
+                    <p><strong>Waitlist:</strong> {{ waitlist_count }}</p>
+                {% endif %}
             {% endif %}
         </div>
 

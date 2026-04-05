@@ -147,7 +147,7 @@ def event_detail(request, id):
             'is_registered': is_registered,
             'is_waitlisted': is_waitlisted,
             'waitlist_count': event.waitlist_entries.count(),
-            'is_full': event.seats_left == 0,
+            'is_full': event.is_full,
             'is_past': event.date < today,
             'user_team': user_team,
             'is_team_leader': is_team_leader,
@@ -275,7 +275,10 @@ def register_event(request, id):
     elif WaitlistEntry.objects.filter(event=event, user=request.user).exists():
         messages.info(request, 'You are already on the waitlist for this event.')
     else:
-        if event.seats_left > 0:
+        if not event.capacity_limited:
+            event.attendees.add(request.user)
+            messages.success(request, 'Registration successful.')
+        elif event.seats_left > 0:
             event.attendees.add(request.user)
             messages.success(request, 'Registration successful.')
         elif event.waitlist_enabled:

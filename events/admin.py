@@ -4,8 +4,16 @@ from .models import Event, WaitlistEntry, Team
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'date', 'capacity', 'waitlist_enabled', 'is_team_event')
-    list_filter = ('category', 'waitlist_enabled', 'is_team_event')
+    list_display = (
+        'title',
+        'category',
+        'date',
+        'capacity_limited',
+        'capacity',
+        'waitlist_enabled',
+        'is_team_event',
+    )
+    list_filter = ('category', 'capacity_limited', 'waitlist_enabled', 'is_team_event')
     search_fields = ('title', 'description')
 
 

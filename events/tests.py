@@ -312,6 +312,7 @@ class EventManagementTests(TestCase):
                 'category': 'sports',
                 'date': '2026-06-20',
                 'description': 'Created by admin.',
+                'capacity_limited': True,
                 'capacity': 150,
                 'waitlist_enabled': True,
                 'is_team_event': False,
@@ -330,6 +331,7 @@ class EventManagementTests(TestCase):
                 'category': 'sports',
                 'date': '2026-06-21',
                 'description': 'Updated by admin.',
+                'capacity_limited': True,
                 'capacity': 80,
                 'waitlist_enabled': False,
                 'is_team_event': False,
@@ -346,6 +348,53 @@ class EventManagementTests(TestCase):
         delete_response = self.client.post(reverse('delete_event', args=[created.id]))
         self.assertRedirects(delete_response, reverse('manage_events'))
         self.assertFalse(Event.objects.filter(id=created.id).exists())
+
+    def test_superuser_can_turn_capacity_limit_off(self):
+        self.client.login(username='admin1', password='safePass123!')
+
+        response = self.client.post(
+            reverse('create_event'),
+            {
+                'title': 'Unlimited Entry Event',
+                'category': 'cultural',
+                'date': '2026-07-05',
+                'description': 'No capacity limit.',
+                'capacity': 10,
+                'waitlist_enabled': True,
+                'is_team_event': False,
+                'min_team_size': 2,
+                'max_team_size': 4,
+            },
+        )
+
+        self.assertRedirects(response, reverse('manage_events'))
+        created = Event.objects.get(title='Unlimited Entry Event')
+        self.assertFalse(created.capacity_limited)
+        self.assertFalse(created.waitlist_enabled)
+
+    def test_superuser_non_team_event_resets_team_sizes(self):
+        self.client.login(username='admin1', password='safePass123!')
+
+        response = self.client.post(
+            reverse('create_event'),
+            {
+                'title': 'Solo Debate',
+                'category': 'cultural',
+                'date': '2026-07-10',
+                'description': 'Individual event.',
+                'capacity_limited': True,
+                'capacity': 120,
+                'waitlist_enabled': True,
+                'min_team_size': 7,
+                'max_team_size': 12,
+            },
+        )
+
+        self.assertRedirects(response, reverse('manage_events'))
+        created = Event.objects.get(title='Solo Debate')
+        self.assertFalse(created.is_team_event)
+        self.assertEqual(created.min_team_size, 2)
+        self.assertEqual(created.max_team_size, 4)
 
 
 class TeamEventTests(TestCase):

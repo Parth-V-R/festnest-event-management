@@ -73,7 +73,7 @@
 <section class="hero">
     <div class="container">
         <h1>Welcome to FestNest - Celebrate, Compete, Connect</h1>
-        <p>Your one-stop hub for college cultural, tech, and sports fests.</p>
+        <p>Your one-stop hub for cultural, technical, sports, NSS, and more campus events.</p>
 
         <div class="hero-buttons">
             <a href="#event-categories" class="cta-btn">Get Started</a>
@@ -106,6 +106,11 @@
         <a href="{% url 'category' 'nss' %}" class="card" style="background-image: url('{% static 'images/nss.jpg' %}');">
             <h3>NSS</h3>
             <p>Join initiatives to serve the community and make a difference.</p>
+        </a>
+
+        <a href="{% url 'category' 'other' %}" class="card" style="background-image: linear-gradient(135deg, rgba(17,24,39,0.78), rgba(29,78,216,0.68));">
+            <h3>Other Events</h3>
+            <p>Explore workshops, talks, exhibitions, and special events.</p>
         </a>
     </section>
 </main>

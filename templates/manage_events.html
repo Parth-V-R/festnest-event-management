@@ -1,13 +1,18 @@
 {% extends 'base.html' %}
 
 {% block title %}Manage Events{% endblock %}
-{% block body_class %}category-page{% endblock %}
+{% block body_class %}category-page admin-manage-page{% endblock %}
 
 {% block content %}
 <section class="carousel-section registrations-section">
     <div class="container">
-        <h2>Manage Events</h2>
-        <p class="search-meta"><a href="{% url 'create_event' %}" class="cta-btn upcoming-btn">Create New Event</a></p>
+        <div class="admin-manage-head">
+            <div>
+                <h2>Manage Events</h2>
+                <p class="search-meta">Create, update, and manage all event details from one place.</p>
+            </div>
+            <a href="{% url 'create_event' %}" class="cta-btn upcoming-btn admin-create-btn">Create New Event</a>
+        </div>
 
         {% if messages %}
             <div class="message-list centered-message-list">
@@ -17,9 +22,9 @@
             </div>
         {% endif %}
 
-        <div class="carousel-track">
+        <div class="admin-events-grid">
             {% for event in events %}
-            <article class="upcoming-card">
+            <article class="upcoming-card admin-event-card">
                 <div class="upcoming-top">
                     <span class="category-pill">{{ event.category|title }}</span>
                     <span class="date-pill">{{ event.date }}</span>
@@ -27,13 +32,21 @@
 
                 <h3>{{ event.title }}</h3>
                 <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
-                <p class="search-meta">Capacity: {{ event.capacity }} | Seats left: {{ event.seats_left }} | Waitlist: {{ event.waitlist_entries.count }}</p>
+                <p class="search-meta">
+                    Capacity:
+                    {% if event.capacity_limited %}{{ event.capacity }}{% else %}Unlimited{% endif %}
+                    |
+                    Seats left:
+                    {% if event.capacity_limited %}{{ event.seats_left }}{% else %}Unlimited{% endif %}
+                    |
+                    Waitlist: {{ event.waitlist_entries.count }}
+                </p>
 
-                <div class="upcoming-actions">
+                <div class="upcoming-actions admin-card-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View</a>
                     <a href="{% url 'edit_event' event.id %}" class="cta-btn upcoming-btn alt">Edit</a>
                 </div>
-                <form method="post" action="{% url 'delete_event' event.id %}" class="inline-form" onsubmit="return confirm('Delete this event?');">
+                <form method="post" action="{% url 'delete_event' event.id %}" class="inline-form admin-delete-form" onsubmit="return confirm('Delete this event?');">
                     {% csrf_token %}
                     <button type="submit" class="cta-btn upcoming-btn alt">Delete</button>
                 </form>

@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ page_title }}{% endblock %}
-{% block body_class %}auth-page{% endblock %}
+{% block body_class %}auth-page admin-form-page{% endblock %}
 
 {% block content %}
 <div class="container auth-shell">
-    <div class="auth-card">
+    <div class="auth-card admin-form-card">
         <h2>{{ page_title }}</h2>
+        <p class="muted-text">Fill in the event details and save changes.</p>
 
         <form method="post" class="auth-form event-form">
             {% csrf_token %}
@@ -14,7 +15,65 @@
             <button type="submit" class="cta-btn auth-submit">{{ button_label }}</button>
         </form>
 
-        <p class="auth-link"><a href="{% url 'manage_events' %}">Back to Manage Events</a></p>
+        <p class="auth-link"><a href="{% url 'manage_events' %}" class="clear-search-btn">Back to Manage Events</a></p>
     </div>
 </div>
+<script>
+(() => {
+    const form = document.querySelector('.event-form');
+    if (!form) return;
+
+    const limitToggle = form.querySelector('#id_capacity_limited');
+    const capacityInput = form.querySelector('#id_capacity');
+    const waitlistInput = form.querySelector('#id_waitlist_enabled');
+    const teamToggle = form.querySelector('#id_is_team_event');
+    const minTeamInput = form.querySelector('#id_min_team_size');
+    const maxTeamInput = form.querySelector('#id_max_team_size');
+
+    if (!limitToggle || !capacityInput || !waitlistInput || !teamToggle || !minTeamInput || !maxTeamInput) return;
+
+    const wrapFor = (input) => input.closest('p');
+    const capacityWrap = wrapFor(capacityInput);
+    const waitlistWrap = wrapFor(waitlistInput);
+    const toggleWrap = wrapFor(limitToggle);
+    const minTeamWrap = wrapFor(minTeamInput);
+    const maxTeamWrap = wrapFor(maxTeamInput);
+    const teamToggleWrap = wrapFor(teamToggle);
+
+    if (toggleWrap) toggleWrap.classList.add('toggle-row', 'master-toggle');
+    if (waitlistWrap) waitlistWrap.classList.add('toggle-row');
+    if (teamToggleWrap) teamToggleWrap.classList.add('toggle-row', 'master-toggle');
+
+    const syncCapacityControls = () => {
+        const isOn = limitToggle.checked;
+        capacityInput.disabled = !isOn;
+        waitlistInput.disabled = !isOn;
+        if (!isOn) waitlistInput.checked = false;
+
+        if (capacityWrap) capacityWrap.classList.toggle('field-disabled', !isOn);
+        if (waitlistWrap) waitlistWrap.classList.toggle('field-disabled', !isOn);
+        if (toggleWrap) toggleWrap.classList.toggle('toggle-off', !isOn);
+    };
+
+    const syncTeamControls = () => {
+        const isOn = teamToggle.checked;
+        minTeamInput.disabled = !isOn;
+        maxTeamInput.disabled = !isOn;
+
+        if (!isOn) {
+            minTeamInput.value = 2;
+            maxTeamInput.value = 4;
+        }
+
+        if (minTeamWrap) minTeamWrap.classList.toggle('field-disabled', !isOn);
+        if (maxTeamWrap) maxTeamWrap.classList.toggle('field-disabled', !isOn);
+        if (teamToggleWrap) teamToggleWrap.classList.toggle('toggle-off', !isOn);
+    };
+
+    limitToggle.addEventListener('change', syncCapacityControls);
+    teamToggle.addEventListener('change', syncTeamControls);
+    syncCapacityControls();
+    syncTeamControls();
+})();
+</script>
 {% endblock %}
