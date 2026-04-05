@@ -22,6 +22,7 @@ from accounts import views as acc_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
+    path('search-suggestions/', views.search_suggestions, name='search_suggestions'),
     path('events/manage/', views.manage_events, name='manage_events'),
     path('events/create/', views.create_event, name='create_event'),
     path('events/<int:id>/edit/', views.edit_event, name='edit_event'),

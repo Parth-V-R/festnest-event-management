@@ -100,6 +100,22 @@ class EventRegistrationTests(TestCase):
         self.assertTrue(full_event.attendees.filter(pk=self.user2.pk).exists())
         self.assertFalse(WaitlistEntry.objects.filter(event=full_event, user=self.user2).exists())
 
+    def test_upcoming_shows_unregister_for_registered_user(self):
+        self.client.login(username='student1', password='safePass123!')
+        self.event.attendees.add(self.user)
+
+        response = self.client.get(reverse('home'))
+
+        self.assertContains(response, 'Unregister')
+
+    def test_category_shows_unregister_for_registered_user(self):
+        self.client.login(username='student1', password='safePass123!')
+        self.event.attendees.add(self.user)
+
+        response = self.client.get(reverse('category', args=['technical']))
+
+        self.assertContains(response, 'Unregister')
+
 
 class EventSearchTests(TestCase):
     def setUp(self):
@@ -133,6 +149,29 @@ class EventSearchTests(TestCase):
         self.assertIn('Classical Dance Night', searched_titles)
         self.assertNotIn('Hackathon 2026', searched_titles)
         self.assertEqual(response.context['result_count'], 1)
+
+    def test_home_upcoming_excludes_past_events(self):
+        Event.objects.create(
+            title='Old Fest',
+            category='cultural',
+            date=date.today() - timedelta(days=2),
+            description='Already completed.',
+        )
+        response = self.client.get(reverse('home'))
+        upcoming_titles = [event.title for event in response.context['upcoming_events']]
+        self.assertNotIn('Old Fest', upcoming_titles)
+
+    def test_search_suggestions_returns_matching_titles(self):
+        response = self.client.get(reverse('search_suggestions'), {'q': 'hack'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        suggestion_titles = [item['title'] for item in payload['suggestions']]
+        self.assertIn('Hackathon 2026', suggestion_titles)
+
+    def test_search_suggestions_requires_min_query_length(self):
+        response = self.client.get(reverse('search_suggestions'), {'q': 'h'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['suggestions'], [])
 
 
 class MyRegistrationsTests(TestCase):
@@ -195,6 +234,48 @@ class MyRegistrationsTests(TestCase):
         response = self.client.get(reverse('unregister_event', args=[self.event_registered.id]))
 
         self.assertEqual(response.status_code, 405)
+
+    def test_unregister_redirects_to_next_when_provided(self):
+        self.client.login(username='student2', password='safePass123!')
+
+        response = self.client.post(
+            reverse('unregister_event', args=[self.event_registered.id]),
+            {'next': reverse('event_detail', args=[self.event_registered.id])},
+        )
+
+        self.assertRedirects(response, reverse('event_detail', args=[self.event_registered.id]))
+
+    def test_my_registrations_splits_active_and_past(self):
+        past_event = Event.objects.create(
+            title='Past Coding Meetup',
+            category='technical',
+            date=date.today() - timedelta(days=1),
+            description='Completed meetup.',
+        )
+        past_event.attendees.add(self.user)
+        self.client.login(username='student2', password='safePass123!')
+
+        response = self.client.get(reverse('my_registrations'))
+
+        active_titles = [event.title for event in response.context['active_events']]
+        past_titles = [event.title for event in response.context['past_events']]
+        self.assertIn('Code Relay', active_titles)
+        self.assertIn('Past Coding Meetup', past_titles)
+
+    def test_cannot_unregister_past_event(self):
+        past_event = Event.objects.create(
+            title='Past Drama',
+            category='cultural',
+            date=date.today() - timedelta(days=1),
+            description='Completed drama.',
+        )
+        past_event.attendees.add(self.user)
+        self.client.login(username='student2', password='safePass123!')
+
+        response = self.client.post(reverse('unregister_event', args=[past_event.id]))
+
+        self.assertRedirects(response, reverse('my_registrations'))
+        self.assertTrue(past_event.attendees.filter(pk=self.user.pk).exists())
 
 
 class EventManagementTests(TestCase):

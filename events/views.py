@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse
 from .models import Event, WaitlistEntry
 from .forms import EventForm
 from django.contrib import messages
@@ -6,13 +7,17 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 
 def home(request):
+    today = timezone.localdate()
     search_query = request.GET.get('q', '').strip()
-    upcoming_events = Event.objects.all().order_by('date')
+    upcoming_events = Event.objects.filter(date__gte=today).order_by('date')
     searched_events = Event.objects.none()
     result_count = 0
+    registered_event_ids = set()
+    waitlisted_event_ids = set()
 
     if search_query:
         searched_events = upcoming_events.filter(
@@ -22,6 +27,14 @@ def home(request):
         )
         result_count = searched_events.count()
 
+    if request.user.is_authenticated:
+        registered_event_ids = set(
+            Event.objects.filter(attendees=request.user).values_list('id', flat=True),
+        )
+        waitlisted_event_ids = set(
+            WaitlistEntry.objects.filter(user=request.user).values_list('event_id', flat=True),
+        )
+
     return render(
         request,
         'index.html',
@@ -30,18 +43,60 @@ def home(request):
             'searched_events': searched_events,
             'search_query': search_query,
             'result_count': result_count,
+            'registered_event_ids': registered_event_ids,
+            'waitlisted_event_ids': waitlisted_event_ids,
         },
     )
 
+
+def search_suggestions(request):
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'suggestions': []})
+
+    suggestions_qs = (
+        Event.objects
+        .filter(
+            Q(title__icontains=query)
+            | Q(category__icontains=query)
+        )
+        .order_by('date')
+        .values('title', 'category', 'date')[:8]
+    )
+    suggestions = [
+        {
+            'title': row['title'],
+            'category': row['category'].title(),
+            'date': row['date'].strftime('%b %d, %Y'),
+        }
+        for row in suggestions_qs
+    ]
+    return JsonResponse({'suggestions': suggestions})
+
+
 def category_events(request, category):
+    today = timezone.localdate()
     events = Event.objects.filter(category=category).order_by('date')
+    registered_event_ids = set()
+    waitlisted_event_ids = set()
+    if request.user.is_authenticated:
+        registered_event_ids = set(
+            Event.objects.filter(attendees=request.user).values_list('id', flat=True),
+        )
+        waitlisted_event_ids = set(
+            WaitlistEntry.objects.filter(user=request.user).values_list('event_id', flat=True),
+        )
     return render(request, 'category.html', {
         'events': events,
-        'category': category
+        'category': category,
+        'registered_event_ids': registered_event_ids,
+        'waitlisted_event_ids': waitlisted_event_ids,
+        'today': today,
     })
 
 
 def event_detail(request, id):
+    today = timezone.localdate()
     event = get_object_or_404(Event, id=id)
     is_registered = False
     is_waitlisted = False
@@ -58,6 +113,7 @@ def event_detail(request, id):
             'is_waitlisted': is_waitlisted,
             'waitlist_count': event.waitlist_entries.count(),
             'is_full': event.seats_left == 0,
+            'is_past': event.date < today,
         },
     )
 
@@ -124,17 +180,24 @@ def delete_event(request, id):
 
 @login_required
 def my_registrations(request):
+    today = timezone.localdate()
     registered_events = Event.objects.filter(attendees=request.user).order_by('date')
+    active_registered_events = registered_events.filter(date__gte=today)
+    past_registered_events = registered_events.filter(date__lt=today)
     waitlisted_entries = (
         WaitlistEntry.objects
-        .filter(user=request.user)
+        .filter(user=request.user, event__date__gte=today)
         .select_related('event')
         .order_by('event__date', 'created_at')
     )
     return render(
         request,
         'my_registrations.html',
-        {'events': registered_events, 'waitlisted_entries': waitlisted_entries},
+        {
+            'active_events': active_registered_events,
+            'past_events': past_registered_events,
+            'waitlisted_entries': waitlisted_entries,
+        },
     )
 
 
@@ -165,7 +228,19 @@ def register_event(request, id):
 @login_required
 @require_POST
 def unregister_event(request, id):
+    today = timezone.localdate()
     event = get_object_or_404(Event, id=id)
+    if event.date < today:
+        messages.info(request, 'Past events are kept as history and cannot be unregistered.')
+        next_url = request.POST.get('next', '')
+        if next_url and url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('my_registrations')
+
     was_registered = event.attendees.filter(pk=request.user.pk).exists()
     if was_registered:
         event.attendees.remove(request.user)
@@ -181,5 +256,12 @@ def unregister_event(request, id):
         messages.success(request, 'You have been removed from the waitlist.')
     else:
         messages.info(request, 'You are not registered for this event.')
+    next_url = request.POST.get('next', '')
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
 
     return redirect('my_registrations')
