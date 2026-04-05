@@ -16,6 +16,7 @@ class Event(models.Model):
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     date = models.DateField()
+    time = models.TimeField(blank=True, null=True)
     description = models.TextField()
     capacity_limited = models.BooleanField(default=True)
     capacity = models.PositiveIntegerField(default=100)

@@ -82,10 +82,11 @@ def search_suggestions(request):
         .order_by('date')
         .values('title', 'category', 'date')[:8]
     )
+    category_map = dict(Event.CATEGORY_CHOICES)
     suggestions = [
         {
             'title': row['title'],
-            'category': row['category'].title(),
+            'category': category_map.get(row['category'], row['category'].title()),
             'date': row['date'].strftime('%b %d, %Y'),
         }
         for row in suggestions_qs
@@ -96,6 +97,14 @@ def search_suggestions(request):
 def category_events(request, category):
     today = timezone.localdate()
     events = Event.objects.filter(category=category).order_by('date')
+    category_titles = {
+        'cultural': 'Cultural Events',
+        'technical': 'Technical Events',
+        'sports': 'Sports',
+        'nss': 'NSS',
+        'other': 'Other',
+    }
+    category_label = category_titles.get(category, category.title())
     registered_event_ids = set()
     waitlisted_event_ids = set()
     user_team_event_ids = set()
@@ -111,6 +120,7 @@ def category_events(request, category):
     return render(request, 'category.html', {
         'events': events,
         'category': category,
+        'category_label': category_label,
         'registered_event_ids': registered_event_ids,
         'waitlisted_event_ids': waitlisted_event_ids,
         'user_team_event_ids': user_team_event_ids,

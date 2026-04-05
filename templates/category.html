@@ -1,61 +1,97 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ category|title }} Events{% endblock %}
+{% block title %}{{ category_label }}{% endblock %}
 {% block body_class %}category-page{% endblock %}
 
 {% block content %}
 <div class="container category-shell">
-    <h1 class="category-title">{{ category|title }} Events</h1>
+    <div class="upcoming-section-head category-head">
+        <h1 class="category-title">{{ category_label }}</h1>
+    </div>
 
     <div class="card-grid">
         {% for event in events %}
-        <div class="event-card">
+        <article class="upcoming-card category-event-card">
+            <div class="upcoming-top">
+                <span class="category-pill">{{ event.get_category_display }}</span>
+                <span class="date-pill">{{ event.date }}</span>
+            </div>
+
             <h3>{{ event.title }}</h3>
-            <p>Date: {{ event.date }}</p>
+            <p class="upcoming-desc">
+                {% if event.description %}
+                    {{ event.description|truncatechars:95 }}
+                {% else %}
+                    No description added yet.
+                {% endif %}
+            </p>
             {% if event.is_team_event %}
             <p class="search-meta">Team Event ({{ event.min_team_size }}-{{ event.max_team_size }} members)</p>
+            <p class="team-status-row">
+                {% if event.id in submitted_team_event_ids %}
+                    <span class="team-status-pill submitted">Submitted</span>
+                {% elif event.id in user_team_event_ids %}
+                    <span class="team-status-pill progress">In Progress</span>
+                {% else %}
+                    <span class="team-status-pill open">Open</span>
+                {% endif %}
+            </p>
             {% endif %}
-            <a href="{% url 'event_detail' event.id %}" class="event-link">View Details</a>
 
             {% if event.date < today %}
                 <p class="registration-note">Event Completed</p>
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    <a href="{% url 'home' %}" class="cta-btn upcoming-btn alt">Go to College</a>
+                </div>
             {% elif user.is_authenticated %}
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                 {% if event.is_team_event %}
                     {% if event.id in submitted_team_event_ids %}
-                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Team Registered</a>
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Team Enrolled</a>
                     {% elif event.id in user_team_event_ids %}
-                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Continue Team</a>
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Continue Team</a>
                     {% else %}
-                        <a href="{% url 'event_detail' event.id %}" class="cta-btn register-btn">Create/Join Team</a>
+                        <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Create/Join Team</a>
                     {% endif %}
                 {% else %}
                     {% if event.id in registered_event_ids %}
                         <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="{{ request.path }}">
-                            <button type="submit" class="cta-btn register-btn">Unregister</button>
+                            <button type="submit" class="cta-btn upcoming-btn alt">Drop</button>
                         </form>
                     {% elif event.id in waitlisted_event_ids %}
                         <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="{{ request.path }}">
-                            <button type="submit" class="cta-btn register-btn">Leave Waitlist</button>
+                            <button type="submit" class="cta-btn upcoming-btn alt">Leave Waitlist</button>
                         </form>
                     {% else %}
                         <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
                             {% csrf_token %}
-                            <button type="submit" class="cta-btn register-btn">Register</button>
+                            <button type="submit" class="cta-btn upcoming-btn alt">Enroll</button>
                         </form>
                     {% endif %}
                 {% endif %}
+                </div>
             {% else %}
                 {% if event.is_team_event %}
                     <p class="registration-note"><a href="{% url 'login' %}">Login for team registration</a></p>
                 {% else %}
-                    <p class="registration-note"><a href="{% url 'login' %}">Login to register</a></p>
+                    <p class="registration-note"><a href="{% url 'login' %}">Login to enroll</a></p>
                 {% endif %}
+                <div class="upcoming-actions">
+                    <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
+                    {% if event.is_team_event %}
+                        <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login for Team</a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Enroll</a>
+                    {% endif %}
+                </div>
             {% endif %}
-        </div>
+        </article>
         {% empty %}
         <p class="empty-text">No events in this category right now.</p>
         {% endfor %}

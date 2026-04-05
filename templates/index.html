@@ -15,19 +15,30 @@
             {% for event in searched_events %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="category-pill">{{ event.get_category_display }}</span>
                     <span class="date-pill">{{ event.date }}</span>
                 </div>
 
                 <h3>{{ event.title }}</h3>
                 <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+                {% if event.is_team_event %}
+                    <p class="team-status-row">
+                        {% if event.id in submitted_team_event_ids %}
+                            <span class="team-status-pill submitted">Submitted</span>
+                        {% elif event.id in user_team_event_ids %}
+                            <span class="team-status-pill progress">In Progress</span>
+                        {% else %}
+                            <span class="team-status-pill open">Open</span>
+                        {% endif %}
+                    </p>
+                {% endif %}
 
                 <div class="upcoming-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                     {% if user.is_authenticated %}
                         {% if event.is_team_event %}
                             {% if event.id in submitted_team_event_ids %}
-                                <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Team Registered</a>
+                                <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Team Enrolled</a>
                             {% elif event.id in user_team_event_ids %}
                                 <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Continue Team</a>
                             {% else %}
@@ -38,7 +49,7 @@
                                 <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.path }}?q={{ search_query|urlencode }}#search-results">
-                                    <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                                    <button type="submit" class="cta-btn upcoming-btn alt">Drop</button>
                                 </form>
                             {% elif event.id in waitlisted_event_ids %}
                                 <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
@@ -49,7 +60,7 @@
                             {% else %}
                                 <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
                                     {% csrf_token %}
-                                    <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                                    <button type="submit" class="cta-btn upcoming-btn alt">Enroll</button>
                                 </form>
                             {% endif %}
                         {% endif %}
@@ -57,7 +68,7 @@
                         {% if event.is_team_event %}
                             <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login for Team</a>
                         {% else %}
-                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
+                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Enroll</a>
                         {% endif %}
                     {% endif %}
                 </div>
@@ -109,33 +120,47 @@
         </a>
 
         <a href="{% url 'category' 'other' %}" class="card" style="background-image: linear-gradient(135deg, rgba(17,24,39,0.78), rgba(29,78,216,0.68));">
-            <h3>Other Events</h3>
+            <h3>Other</h3>
             <p>Explore workshops, talks, exhibitions, and special events.</p>
         </a>
     </section>
 </main>
 
-<section id="upcoming-events" class="carousel-section">
+<section id="upcoming-events" class="carousel-section upcoming-section">
     <div class="container">
-        <h2>Upcoming Events</h2>
+        <div class="upcoming-section-head">
+            <h2>Upcoming Events</h2>
+            <p>Discover what is next and register in a click.</p>
+        </div>
 
-        <div class="carousel-track">
+        <div class="carousel-track upcoming-track">
             {% for event in upcoming_events %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="category-pill">{{ event.get_category_display }}</span>
                     <span class="date-pill">{{ event.date }}</span>
                 </div>
 
                 <h3>{{ event.title }}</h3>
                 <p class="upcoming-desc">{{ event.description|truncatechars:95 }}</p>
+                {% if event.is_team_event %}
+                    <p class="team-status-row">
+                        {% if event.id in submitted_team_event_ids %}
+                            <span class="team-status-pill submitted">Submitted</span>
+                        {% elif event.id in user_team_event_ids %}
+                            <span class="team-status-pill progress">In Progress</span>
+                        {% else %}
+                            <span class="team-status-pill open">Open</span>
+                        {% endif %}
+                    </p>
+                {% endif %}
 
                 <div class="upcoming-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                     {% if user.is_authenticated %}
                         {% if event.is_team_event %}
                             {% if event.id in submitted_team_event_ids %}
-                                <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Team Registered</a>
+                                <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Team Enrolled</a>
                             {% elif event.id in user_team_event_ids %}
                                 <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn alt">Continue Team</a>
                             {% else %}
@@ -146,7 +171,7 @@
                                 <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.path }}#upcoming-events">
-                                    <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                                    <button type="submit" class="cta-btn upcoming-btn alt">Drop</button>
                                 </form>
                             {% elif event.id in waitlisted_event_ids %}
                                 <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
@@ -157,7 +182,7 @@
                             {% else %}
                                 <form method="post" action="{% url 'register_event' event.id %}" class="inline-form">
                                     {% csrf_token %}
-                                    <button type="submit" class="cta-btn upcoming-btn alt">Register</button>
+                                    <button type="submit" class="cta-btn upcoming-btn alt">Enroll</button>
                                 </form>
                             {% endif %}
                         {% endif %}
@@ -165,7 +190,7 @@
                         {% if event.is_team_event %}
                             <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login for Team</a>
                         {% else %}
-                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Register</a>
+                            <a href="{% url 'login' %}" class="cta-btn upcoming-btn alt">Login to Enroll</a>
                         {% endif %}
                     {% endif %}
                 </div>

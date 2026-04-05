@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from datetime import date, timedelta
+from django.utils import timezone
 
 from .models import Event, WaitlistEntry, Team
 
@@ -53,7 +54,7 @@ class EventRegistrationTests(TestCase):
         past_event = Event.objects.create(
             title='Past Seminar',
             category='technical',
-            date=date.today() - timedelta(days=1),
+            date=timezone.localdate() - timedelta(days=1),
             description='Old event.',
         )
         self.client.login(username='student1', password='safePass123!')
@@ -106,7 +107,7 @@ class EventRegistrationTests(TestCase):
 
         response = self.client.get(reverse('home'))
 
-        self.assertContains(response, 'Unregister')
+        self.assertContains(response, 'Drop')
 
     def test_category_shows_unregister_for_registered_user(self):
         self.client.login(username='student1', password='safePass123!')
@@ -114,7 +115,7 @@ class EventRegistrationTests(TestCase):
 
         response = self.client.get(reverse('category', args=['technical']))
 
-        self.assertContains(response, 'Unregister')
+        self.assertContains(response, 'Drop')
 
 
 class EventSearchTests(TestCase):
@@ -154,7 +155,7 @@ class EventSearchTests(TestCase):
         Event.objects.create(
             title='Old Fest',
             category='cultural',
-            date=date.today() - timedelta(days=2),
+            date=timezone.localdate() - timedelta(days=2),
             description='Already completed.',
         )
         response = self.client.get(reverse('home'))
@@ -249,7 +250,7 @@ class MyRegistrationsTests(TestCase):
         past_event = Event.objects.create(
             title='Past Coding Meetup',
             category='technical',
-            date=date.today() - timedelta(days=1),
+            date=timezone.localdate() - timedelta(days=1),
             description='Completed meetup.',
         )
         past_event.attendees.add(self.user)
@@ -266,7 +267,7 @@ class MyRegistrationsTests(TestCase):
         past_event = Event.objects.create(
             title='Past Drama',
             category='cultural',
-            date=date.today() - timedelta(days=1),
+            date=timezone.localdate() - timedelta(days=1),
             description='Completed drama.',
         )
         past_event.attendees.add(self.user)
@@ -393,7 +394,7 @@ class EventManagementTests(TestCase):
         self.assertRedirects(response, reverse('manage_events'))
         created = Event.objects.get(title='Solo Debate')
         self.assertFalse(created.is_team_event)
-        self.assertEqual(created.min_team_size, 2)
+        self.assertEqual(created.min_team_size, 1)
         self.assertEqual(created.max_team_size, 4)
 
 
@@ -406,7 +407,7 @@ class TeamEventTests(TestCase):
         self.team_event = Event.objects.create(
             title='Inter College Hack Relay',
             category='technical',
-            date=date.today() + timedelta(days=10),
+            date=timezone.localdate() + timedelta(days=10),
             description='Team coding event.',
             is_team_event=True,
             min_team_size=2,

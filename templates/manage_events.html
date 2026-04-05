@@ -26,7 +26,7 @@
             {% for event in events %}
             <article class="upcoming-card admin-event-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="category-pill">{{ event.get_category_display }}</span>
                     <span class="date-pill">{{ event.date }}</span>
                 </div>
 

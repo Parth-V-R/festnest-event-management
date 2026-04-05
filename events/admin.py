@@ -8,6 +8,7 @@ class EventAdmin(admin.ModelAdmin):
         'title',
         'category',
         'date',
+        'time',
         'capacity_limited',
         'capacity',
         'waitlist_enabled',

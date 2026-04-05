@@ -17,8 +17,11 @@
         <h1>{{ event.title }}</h1>
 
         <div class="detail-meta">
-            <p><strong>Category:</strong> {{ event.category|title }}</p>
+            <p><strong>Category:</strong> {{ event.get_category_display }}</p>
             <p><strong>Date:</strong> {{ event.date }}</p>
+            {% if event.time %}
+                <p><strong>Time:</strong> {{ event.time|time:"h:i A" }}</p>
+            {% endif %}
             {% if event.is_team_event %}
                 <p><strong>Type:</strong> Team Event</p>
                 <p><strong>Team Size:</strong> {{ event.min_team_size }}-{{ event.max_team_size }}</p>
@@ -38,30 +41,54 @@
             {% if is_past %}
                 <p class="registration-note">This event is completed.</p>
                 <div class="detail-actions">
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% elif not user.is_authenticated %}
                 <p class="registration-note">Please <a href="{% url 'login' %}">login</a> to manage your team.</p>
                 <div class="detail-actions">
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% elif user_team %}
                 <p class="registration-note">
                     Team: <strong>{{ user_team.name }}</strong> |
-                    Leader: <strong>{{ user_team.leader.username }}</strong> |
-                    Invite Code: <strong>{{ user_team.join_code }}</strong>
+                    Your Role:
+                    {% if is_team_leader %}
+                        <span class="role-badge leader">Leader</span>
+                    {% else %}
+                        <span class="role-badge member">Member</span>
+                    {% endif %}
+                    |
+                    Status:
+                    {% if user_team.is_submitted %}
+                        <span class="team-status-pill submitted">Submitted</span>
+                    {% elif user_team.member_count >= event.max_team_size %}
+                        <span class="team-status-pill full">Full</span>
+                    {% else %}
+                        <span class="team-status-pill progress">In Progress</span>
+                    {% endif %}
                 </p>
+                <div class="invite-line">
+                    <span>Invite Code: <strong id="teamInviteCode">{{ user_team.join_code }}</strong></span>
+                    <button type="button" class="clear-search-btn copy-code-btn" data-code="{{ user_team.join_code }}">Copy Code</button>
+                </div>
                 <p class="search-meta">Members ({{ user_team.member_count }}/{{ event.max_team_size }}):</p>
                 <ul class="team-members">
                     {% for member in user_team.members.all %}
-                        <li>{{ member.username }}{% if member.id == user_team.leader.id %} (Leader){% endif %}</li>
+                        <li>
+                            {{ member.username }}
+                            {% if member.id == user_team.leader.id %}
+                                <span class="role-badge leader">Leader</span>
+                            {% else %}
+                                <span class="role-badge member">Member</span>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
 
                 {% if user_team.is_submitted %}
                     <p class="registration-note">Your team is submitted for this event.</p>
                     <div class="detail-actions">
-                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                     </div>
                 {% else %}
                     <div class="detail-actions team-action-wrap">
@@ -75,7 +102,7 @@
                             {% csrf_token %}
                             <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Leave Team</button>
                         </form>
-                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                        <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                     </div>
                 {% endif %}
             {% else %}
@@ -98,13 +125,13 @@
                 </div>
 
                 <div class="detail-actions">
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% endif %}
         {% elif is_past %}
             <p class="registration-note">This event is completed.</p>
             <div class="detail-actions">
-                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
             </div>
         {% elif user.is_authenticated %}
             {% if is_registered %}
@@ -113,9 +140,9 @@
                     <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form detail-inline-form">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.path }}">
-                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Unregister</button>
+                        <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Drop</button>
                     </form>
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% elif is_waitlisted %}
                 <p class="registration-note">You are currently on the waitlist for this event.</p>
@@ -125,25 +152,51 @@
                         <input type="hidden" name="next" value="{{ request.path }}">
                         <button type="submit" class="cta-btn detail-action-btn detail-register-btn">Leave Waitlist</button>
                     </form>
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% else %}
                 <div class="detail-actions">
                     <form method="post" action="{% url 'register_event' event.id %}" class="inline-form detail-inline-form">
                         {% csrf_token %}
                         <button type="submit" class="cta-btn detail-action-btn detail-register-btn">
-                            {% if is_full and event.waitlist_enabled %}Join Waitlist{% else %}Register for Event{% endif %}
+                            {% if is_full and event.waitlist_enabled %}Join Waitlist{% else %}Enroll{% endif %}
                         </button>
                     </form>
-                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                    <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
                 </div>
             {% endif %}
         {% else %}
             <p class="registration-note">Please <a href="{% url 'login' %}">login</a> to register.</p>
             <div class="detail-actions">
-                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Back to Home</a>
+                <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
             </div>
         {% endif %}
     </div>
 </div>
+<script>
+(() => {
+    const copyBtn = document.querySelector('.copy-code-btn');
+    if (!copyBtn) return;
+
+    const copyText = copyBtn.dataset.code || '';
+    const setLabel = (label) => { copyBtn.textContent = label; };
+
+    copyBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(copyText);
+            setLabel('Copied');
+            setTimeout(() => setLabel('Copy Code'), 1200);
+        } catch (error) {
+            const fallbackInput = document.createElement('input');
+            fallbackInput.value = copyText;
+            document.body.appendChild(fallbackInput);
+            fallbackInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(fallbackInput);
+            setLabel('Copied');
+            setTimeout(() => setLabel('Copy Code'), 1200);
+        }
+    });
+})();
+</script>
 {% endblock %}

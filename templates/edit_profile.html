@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Profile{% endblock %}
+{% block body_class %}auth-page admin-form-page{% endblock %}
+
+{% block content %}
+<div class="container auth-shell">
+    <div class="auth-card admin-form-card">
+        <h2>Edit Profile</h2>
+        <p class="muted-text">Keep your personal details updated for events and team coordination.</p>
+
+        {% if messages %}
+            <div class="message-list">
+                {% for message in messages %}
+                    <p class="message message-{{ message.tags|default:'info' }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" class="auth-form event-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="cta-btn auth-submit">Save Profile</button>
+        </form>
+
+        <p class="auth-link"><a href="{% url 'profile' %}" class="clear-search-btn">Back to Profile</a></p>
+    </div>
+</div>
+{% endblock %}

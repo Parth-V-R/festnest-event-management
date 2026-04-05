@@ -20,7 +20,7 @@
             {% for event in active_events %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="category-pill">{{ event.get_category_display }}</span>
                     <span class="date-pill">{{ event.date }}</span>
                 </div>
 
@@ -31,7 +31,7 @@
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View Details</a>
                     <form method="post" action="{% url 'unregister_event' event.id %}" class="inline-form">
                         {% csrf_token %}
-                        <button type="submit" class="cta-btn upcoming-btn alt">Unregister</button>
+                        <button type="submit" class="cta-btn upcoming-btn alt">Drop</button>
                     </form>
                 </div>
             </article>
@@ -45,7 +45,7 @@
             {% for team in active_team_registrations %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="category-pill">{{ team.event.get_category_display }}</span>
                     <span class="date-pill">{{ team.event.date }}</span>
                 </div>
                 <h3>{{ team.event.title }}</h3>
@@ -68,7 +68,7 @@
             {% for team in active_teams_in_progress %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="category-pill">{{ team.event.get_category_display }}</span>
                     <span class="date-pill">{{ team.event.date }}</span>
                 </div>
                 <h3>{{ team.event.title }}</h3>
@@ -91,7 +91,7 @@
             {% for entry in waitlisted_entries %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ entry.event.category|title }}</span>
+                    <span class="category-pill">{{ entry.event.get_category_display }}</span>
                     <span class="date-pill">{{ entry.event.date }}</span>
                 </div>
 
@@ -116,7 +116,7 @@
             {% for event in past_events %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ event.category|title }}</span>
+                    <span class="category-pill">{{ event.get_category_display }}</span>
                     <span class="date-pill">{{ event.date }}</span>
                 </div>
 
@@ -134,7 +134,7 @@
             {% for team in past_team_registrations %}
             <article class="upcoming-card">
                 <div class="upcoming-top">
-                    <span class="category-pill">{{ team.event.category|title }}</span>
+                    <span class="category-pill">{{ team.event.get_category_display }}</span>
                     <span class="date-pill">{{ team.event.date }}</span>
                 </div>
                 <h3>{{ team.event.title }}</h3>

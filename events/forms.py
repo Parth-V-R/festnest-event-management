@@ -13,6 +13,10 @@ class EventForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'Event description'}),
     )
+    time = forms.TimeField(
+        required=False,
+        widget=forms.TimeInput(attrs={'type': 'time'}),
+    )
     capacity = forms.IntegerField(
         required=False,
         min_value=1,
@@ -20,8 +24,8 @@ class EventForm(forms.ModelForm):
     )
     min_team_size = forms.IntegerField(
         required=False,
-        min_value=2,
-        widget=forms.NumberInput(attrs={'min': 2}),
+        min_value=1,
+        widget=forms.NumberInput(attrs={'min': 1}),
     )
     max_team_size = forms.IntegerField(
         required=False,
@@ -35,6 +39,7 @@ class EventForm(forms.ModelForm):
             'title',
             'category',
             'date',
+            'time',
             'description',
             'capacity_limited',
             'capacity',
@@ -65,7 +70,7 @@ class EventForm(forms.ModelForm):
             if capacity is None:
                 self.add_error('capacity', 'Capacity is required when limit capacity is ON.')
         if not cleaned_data.get('is_team_event'):
-            cleaned_data['min_team_size'] = 2
+            cleaned_data['min_team_size'] = 1
             cleaned_data['max_team_size'] = 4
         else:
             min_size = cleaned_data.get('min_team_size')

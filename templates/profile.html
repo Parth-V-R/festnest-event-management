@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile{% endblock %}
+{% block body_class %}detail-page{% endblock %}
+
+{% block content %}
+<div class="container detail-shell">
+    <div class="detail-card profile-card">
+        {% if messages %}
+            <div class="message-list">
+                {% for message in messages %}
+                    <p class="message message-{{ message.tags|default:'info' }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <h1>My Profile</h1>
+        <div class="detail-meta">
+            <p><strong>Username:</strong> {{ user.username }}</p>
+            <p>
+                <strong>Email ID:</strong> {{ user.email|default:'Not added' }}
+                {% if profile.email_verified %}
+                    <span class="team-status-pill submitted">Verified</span>
+                {% else %}
+                    <span class="team-status-pill full">Not Verified</span>
+                {% endif %}
+            </p>
+            <p><strong>Section:</strong> {{ profile.section|default:'Not added' }}</p>
+            <p><strong>Roll No:</strong> {{ profile.roll_no|default:'Not added' }}</p>
+            <p>
+                <strong>Mobile:</strong> {{ profile.phone|default:'Not added' }}
+                {% if profile.phone_verified %}
+                    <span class="team-status-pill submitted">Verified</span>
+                {% else %}
+                    <span class="team-status-pill full">Not Verified</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <p class="detail-description"><strong>Full Name:</strong> {{ profile.full_name|default:'Not added' }}</p>
+        <p class="detail-description"><strong>College:</strong> {{ profile.college|default:'Not added' }}</p>
+        <p class="detail-description"><strong>Department:</strong> {{ profile.department|default:'Not added' }}</p>
+        <p class="detail-description"><strong>Year:</strong> {{ profile.year_of_study|default:'Not added' }}</p>
+        <p class="detail-description"><strong>Bio:</strong> {{ profile.bio|default:'Not added' }}</p>
+        {% if user.email and not profile.email_verified %}
+            <p class="registration-note">
+                Email not verified yet.
+                <a href="{% url 'request_email_verification' %}" class="event-link">Verify Email ID</a>
+            </p>
+        {% endif %}
+        {% if profile.phone and not profile.phone_verified %}
+            <div class="team-block profile-otp-block">
+                <h3>Verify Mobile Number</h3>
+                <form method="post" action="{% url 'request_phone_verification' %}" class="team-form profile-otp-form">
+                    {% csrf_token %}
+                    <button type="submit" class="cta-btn profile-otp-btn">Send OTP</button>
+                </form>
+                <form method="post" action="{% url 'verify_phone_otp' %}" class="team-form profile-otp-form">
+                    {% csrf_token %}
+                    <input type="text" name="otp" maxlength="6" placeholder="Enter 6-digit OTP" required class="profile-otp-input">
+                    <button type="submit" class="cta-btn profile-otp-btn">Verify OTP</button>
+                </form>
+                <p class="search-meta">OTP expires in 10 minutes.</p>
+            </div>
+        {% endif %}
+
+        <div class="detail-actions">
+            <a href="{% url 'edit_profile' %}" class="cta-btn detail-action-btn">Edit Profile</a>
+            <a href="{% url 'change_password' %}" class="cta-btn detail-action-btn">Change Password</a>
+            <a href="{% url 'home' %}" class="cta-btn detail-action-btn back-btn">Go to College</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

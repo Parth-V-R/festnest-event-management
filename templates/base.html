@@ -28,6 +28,7 @@
             {% if user.is_superuser %}
                 <a href="{% url 'manage_events' %}" class="signup-btn {% if request.path == '/events/manage/' %}nav-active{% endif %}">Manage Events</a>
             {% endif %}
+            <a href="{% url 'profile' %}" class="signup-btn {% if request.path == '/profile/' or request.path == '/profile/edit/' %}nav-active{% endif %}">My Profile</a>
             <a href="{% url 'my_registrations' %}" class="signup-btn {% if request.path == '/my-registrations/' %}nav-active{% endif %}">My Registrations</a>
             <a href="{% url 'logout' %}" class="signup-btn">Logout</a>
         {% else %}

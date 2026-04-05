@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from events import views
 from accounts import views as acc_views
 
@@ -36,7 +37,49 @@ urlpatterns = [
     path('event/<int:id>/team/submit/', views.submit_team, name='submit_team'),
     path('signup/', acc_views.signup, name='signup'),
     path('login/', acc_views.user_login, name='login'),
+    path('forgot-password/', acc_views.forgot_password_options, name='forgot_password_options'),
+    path('forgot-password/mobile/', acc_views.forgot_password_mobile, name='forgot_password_mobile'),
+    path(
+        'forgot-password/mobile/verify/',
+        acc_views.forgot_password_mobile_verify,
+        name='forgot_password_mobile_verify',
+    ),
+    path(
+        'forgot-password/email/',
+        auth_views.PasswordResetView.as_view(
+            template_name='registration/password_reset_form.html',
+            email_template_name='registration/password_reset_email.html',
+            subject_template_name='registration/password_reset_subject.txt',
+        ),
+        name='password_reset',
+    ),
+    path(
+        'forgot-password/email/done/',
+        auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'),
+        name='password_reset_done',
+    ),
+    path(
+        'forgot-password/email/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'),
+        name='password_reset_confirm',
+    ),
+    path(
+        'forgot-password/email/complete/',
+        auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'),
+        name='password_reset_complete',
+    ),
     path('logout/', acc_views.user_logout, name='logout'),
+    path('profile/', acc_views.profile_view, name='profile'),
+    path('profile/edit/', acc_views.edit_profile, name='edit_profile'),
+    path('profile/change-password/', acc_views.change_password, name='change_password'),
+    path('profile/verify-email/', acc_views.request_email_verification, name='request_email_verification'),
+    path('profile/verify-phone/', acc_views.request_phone_verification, name='request_phone_verification'),
+    path('profile/verify-phone/confirm/', acc_views.verify_phone_otp, name='verify_phone_otp'),
+    path(
+        'profile/verify-email/<uidb64>/<token>/',
+        acc_views.confirm_email_verification,
+        name='confirm_email_verification',
+    ),
     path('event/<int:id>/register/', views.register_event, name='register_event'),
     path('event/<int:id>/unregister/', views.unregister_event, name='unregister_event'),
     
