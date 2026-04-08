@@ -1,0 +1,15 @@
+[Unit]
+Description=FestNest Django Gunicorn Service
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/FestNest
+EnvironmentFile=/home/ubuntu/FestNest/.env
+ExecStart=/home/ubuntu/FestNest/.venv/bin/gunicorn FestNest.wsgi:application --bind 127.0.0.1:8001 --workers 3 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

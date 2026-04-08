@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,6 +46,9 @@ ALLOWED_HOSTS = [
     for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
     if host.strip()
 ]
+render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_external_hostname)
 if DJANGO_ENV != 'production' and 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
 if DJANGO_ENV == 'production' and not ALLOWED_HOSTS:
@@ -55,6 +59,10 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
     if origin.strip()
 ]
+if render_external_hostname:
+    render_origin = f'https://{render_external_hostname}'
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 
 # Application definition
@@ -72,6 +80,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -109,6 +118,23 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+database_url = os.getenv('DATABASE_URL', '').strip()
+db_engine = os.getenv('DJANGO_DB_ENGINE', '').strip()
+if database_url:
+    DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=True)
+elif db_engine:
+    db_name = os.getenv('DJANGO_DB_NAME', '').strip()
+    if not db_name:
+        raise ImproperlyConfigured('DJANGO_DB_NAME must be set when DJANGO_DB_ENGINE is provided.')
+    DATABASES['default'] = {
+        'ENGINE': db_engine,
+        'NAME': db_name,
+        'USER': os.getenv('DJANGO_DB_USER', '').strip(),
+        'PASSWORD': os.getenv('DJANGO_DB_PASSWORD', '').strip(),
+        'HOST': os.getenv('DJANGO_DB_HOST', '').strip() or 'localhost',
+        'PORT': os.getenv('DJANGO_DB_PORT', '').strip(),
+    }
 
 
 # Password validation
@@ -148,6 +174,60 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if DJANGO_ENV == 'production'
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
+    },
+}
+
+use_s3 = os.getenv('DJANGO_USE_S3', 'false').lower() in ('1', 'true', 'yes', 'on')
+if use_s3:
+    aws_bucket_name = os.getenv('DJANGO_AWS_STORAGE_BUCKET_NAME', '').strip()
+    aws_s3_endpoint_url = os.getenv('DJANGO_AWS_S3_ENDPOINT_URL', '').strip()
+    aws_access_key_id = os.getenv('DJANGO_AWS_ACCESS_KEY_ID', '').strip()
+    aws_secret_access_key = os.getenv('DJANGO_AWS_SECRET_ACCESS_KEY', '').strip()
+    aws_default_acl = os.getenv('DJANGO_AWS_DEFAULT_ACL', '').strip() or None
+    if not aws_bucket_name:
+        raise ImproperlyConfigured('DJANGO_AWS_STORAGE_BUCKET_NAME must be set when DJANGO_USE_S3 is enabled.')
+    if not aws_s3_endpoint_url:
+        raise ImproperlyConfigured('DJANGO_AWS_S3_ENDPOINT_URL must be set when DJANGO_USE_S3 is enabled.')
+    if not aws_access_key_id or not aws_secret_access_key:
+        raise ImproperlyConfigured(
+            'DJANGO_AWS_ACCESS_KEY_ID and DJANGO_AWS_SECRET_ACCESS_KEY must be set when DJANGO_USE_S3 is enabled.',
+        )
+
+    AWS_STORAGE_BUCKET_NAME = aws_bucket_name
+    AWS_S3_ENDPOINT_URL = aws_s3_endpoint_url
+    AWS_ACCESS_KEY_ID = aws_access_key_id
+    AWS_SECRET_ACCESS_KEY = aws_secret_access_key
+    AWS_S3_REGION_NAME = os.getenv('DJANGO_AWS_S3_REGION_NAME', '').strip() or None
+    AWS_DEFAULT_ACL = aws_default_acl
+    AWS_QUERYSTRING_AUTH = os.getenv('DJANGO_AWS_QUERYSTRING_AUTH', 'false').lower() in (
+        '1',
+        'true',
+        'yes',
+        'on',
+    )
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_ADDRESSING_STYLE = os.getenv('DJANGO_AWS_S3_ADDRESSING_STYLE', 'path')
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 LOGIN_URL = '/login/'
 

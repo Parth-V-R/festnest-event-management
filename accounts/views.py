@@ -254,15 +254,19 @@ def forgot_password_email(request):
         request.session['password_reset_email_user_id'] = user.id
         request.session['password_reset_origin_user_id'] = request.user.id if request.user.is_authenticated else None
 
-        send_mail(
-            subject='FestNest Password Reset OTP',
-            message=f'Hi {user.username}, your FestNest password reset OTP is: {otp}',
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@festnest.local'),
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
+        try:
+            send_mail(
+                subject='FestNest Password Reset OTP',
+                message=f'Hi {user.username}, your FestNest password reset OTP is: {otp}',
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@festnest.local'),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            messages.success(request, 'OTP sent to your Email ID.')
+        except Exception:
+            messages.error(request, 'Could not send OTP email. Check email settings and try again.')
+            return redirect('forgot_password_email')
 
-        messages.success(request, 'OTP sent to your Email ID.')
         if settings.DEBUG:
             messages.info(request, f'DEBUG EMAIL OTP: {otp}')
         return redirect('forgot_password_email_verify')

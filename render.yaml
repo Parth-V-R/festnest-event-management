@@ -1,0 +1,30 @@
+databases:
+  - name: festnest-db
+    databaseName: festnest
+    user: festnest
+
+services:
+  - type: web
+    name: festnest
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py migrate && gunicorn FestNest.wsgi:application --log-file -
+    envVars:
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: 127.0.0.1,localhost
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: ""
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_TIME_ZONE
+        value: Asia/Kolkata
+      - key: DJANGO_SECURE_PROXY_SSL_HEADER
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: festnest-db
+          property: connectionString
