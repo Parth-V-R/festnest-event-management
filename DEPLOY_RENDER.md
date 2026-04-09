@@ -30,6 +30,14 @@ In `festnest` -> `Environment`, set:
 
 `DATABASE_URL` is wired automatically by `render.yaml`.
 
+If you are using a fresh cloud DB and cannot log in yet, also set:
+- `DJANGO_BOOTSTRAP_ADMIN=true`
+- `DJANGO_BOOTSTRAP_ADMIN_USERNAME=admin`
+- `DJANGO_BOOTSTRAP_ADMIN_EMAIL=you@example.com`
+- `DJANGO_BOOTSTRAP_ADMIN_PASSWORD=your-strong-password`
+
+After first successful login, set `DJANGO_BOOTSTRAP_ADMIN=false` and redeploy.
+
 ## 4) First deploy behavior
 
 Start command runs:
@@ -49,4 +57,3 @@ Build command runs:
 ```bash
 python manage.py createsuperuser
 ```
-
