@@ -1671,4 +1671,32 @@ form {
     .profile-otp-input {
         width: 100%;
     }
+
+    /* Keep event detail action buttons aligned and inside card on mobile */
+    .detail-page .detail-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .detail-page .detail-inline-form,
+    .detail-page .back-btn {
+        width: 100%;
+        flex: 1 1 auto;
+        max-width: none;
+    }
+
+    .detail-page .detail-action-btn {
+        width: 100%;
+        height: 42px;
+        margin: 0;
+    }
+}
+
+@media (max-width: 460px) {
+    .detail-page .detail-actions {
+        grid-template-columns: 1fr;
+    }
 }
