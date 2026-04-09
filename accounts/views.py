@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.encoding import force_bytes, force_str
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -82,15 +83,23 @@ def profile_view(request):
 @login_required
 def edit_profile(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
+    next_url = request.GET.get('next', '')
     if request.method == 'POST':
         form = ProfileForm(request.POST, instance=profile, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully.')
+            posted_next_url = request.POST.get('next', '')
+            if posted_next_url and url_has_allowed_host_and_scheme(
+                url=posted_next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(posted_next_url)
             return redirect('profile')
     else:
         form = ProfileForm(instance=profile, user=request.user)
-    return render(request, 'edit_profile.html', {'form': form})
+    return render(request, 'edit_profile.html', {'form': form, 'next_url': next_url})
 
 
 @login_required

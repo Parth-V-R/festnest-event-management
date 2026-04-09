@@ -1191,6 +1191,13 @@ form {
     margin-bottom: 16px;
 }
 
+.admin-head-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .admin-create-btn {
     min-width: 180px;
     display: inline-flex;
@@ -1218,8 +1225,107 @@ form {
     line-height: 1.45;
 }
 
+.admin-registration-meta {
+    margin-bottom: 8px;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.admin-registrations {
+    margin-top: 4px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    overflow: hidden;
+}
+
+.admin-registrations summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+    background: #eff6ff;
+    border-bottom: 1px solid #dbeafe;
+}
+
+.admin-registrations summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-registrations[open] summary {
+    background: #e6f0ff;
+}
+
+.admin-table-wrap {
+    overflow-x: auto;
+    padding: 10px 10px 12px;
+}
+
+.admin-registration-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.admin-registration-table th,
+.admin-registration-table td {
+    border: 1px solid #dbeafe;
+    padding: 7px 8px;
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.admin-registration-table th {
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-weight: 700;
+}
+
+.admin-team-list {
+    padding: 10px;
+    display: grid;
+    gap: 10px;
+}
+
+.admin-team-card {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.admin-team-head,
+.admin-team-sub {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 0.84rem;
+}
+
+.admin-team-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid #e6f0ff;
+    background: #f8fbff;
+}
+
+.admin-team-sub {
+    color: #475569;
+}
+
+.admin-empty-inline {
+    margin: 10px;
+}
+
 .admin-card-actions {
     margin-top: auto;
+}
+
+.admin-export-row {
+    margin-top: 8px;
 }
 
 .admin-delete-form {
@@ -1406,6 +1512,11 @@ form {
     .admin-manage-head {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .admin-head-actions {
+        width: 100%;
+        flex-direction: column;
     }
 
     .admin-create-btn {

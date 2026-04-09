@@ -41,7 +41,6 @@
         <p class="detail-description"><strong>College:</strong> {{ profile.college|default:'Not added' }}</p>
         <p class="detail-description"><strong>Department:</strong> {{ profile.department|default:'Not added' }}</p>
         <p class="detail-description"><strong>Year:</strong> {{ profile.year_of_study|default:'Not added' }}</p>
-        <p class="detail-description"><strong>Bio:</strong> {{ profile.bio|default:'Not added' }}</p>
         {% if user.email and not profile.email_verified %}
             <p class="registration-note">
                 Email not verified yet.

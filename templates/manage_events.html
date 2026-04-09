@@ -11,7 +11,10 @@
                 <h2>Manage Events</h2>
                 <p class="search-meta">Create, update, and manage all event details from one place.</p>
             </div>
-            <a href="{% url 'create_event' %}" class="cta-btn upcoming-btn admin-create-btn">Create New Event</a>
+            <div class="admin-head-actions">
+                <a href="{% url 'export_all_registrations_csv' %}" class="cta-btn upcoming-btn alt admin-create-btn">Export All CSV</a>
+                <a href="{% url 'create_event' %}" class="cta-btn upcoming-btn admin-create-btn">Create New Event</a>
+            </div>
         </div>
 
         {% if messages %}
@@ -41,10 +44,133 @@
                     |
                     Waitlist: {{ event.waitlist_entries.count }}
                 </p>
+                <p class="search-meta admin-registration-meta">
+                    {% if event.is_team_event %}
+                        Teams: {{ event.teams.count }} | Submitted Teams: {{ event.submitted_team_count }}
+                    {% else %}
+                        Registered Users: {{ event.attendees.count }}
+                    {% endif %}
+                </p>
+
+                <details class="admin-registrations">
+                    <summary>
+                        {% if event.is_team_event %}
+                            View Registered Teams & Members
+                        {% else %}
+                            View Registered Users
+                        {% endif %}
+                    </summary>
+
+                    {% if event.is_team_event %}
+                        {% if event.teams.all %}
+                            <div class="admin-team-list">
+                                {% for team in event.teams.all %}
+                                    <div class="admin-team-card">
+                                        <p class="admin-team-head">
+                                            <strong>{{ team.name }}</strong>
+                                            {% if team.is_submitted %}
+                                                <span class="team-status-pill submitted">Submitted</span>
+                                            {% else %}
+                                                <span class="team-status-pill progress">In Progress</span>
+                                            {% endif %}
+                                        </p>
+                                        <p class="admin-team-sub">
+                                            Leader: {{ team.leader.username }}
+                                            {% if team.join_code %}| Join Code: {{ team.join_code }}{% endif %}
+                                        </p>
+                                        <div class="admin-table-wrap">
+                                            <table class="admin-registration-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Username</th>
+                                                        <th>Email</th>
+                                                        <th>Phone</th>
+                                                        <th>Roll No</th>
+                                                        <th>Section</th>
+                                                        <th>Dept</th>
+                                                        <th>Year</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for member in team.members.all %}
+                                                    <tr>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.full_name|default:'-' }}{% else %}-{% endif %}</td>
+                                                        <td>
+                                                            {{ member.username }}
+                                                            {% if member.id == team.leader_id %}
+                                                                <span class="role-badge leader">Leader</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ member.email|default:'-' }}</td>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.phone|default:'-' }}{% else %}-{% endif %}</td>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.roll_no|default:'-' }}{% else %}-{% endif %}</td>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.section|default:'-' }}{% else %}-{% endif %}</td>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.department|default:'-' }}{% else %}-{% endif %}</td>
+                                                        <td>{% if member.admin_profile %}{{ member.admin_profile.year_of_study|default:'-' }}{% else %}-{% endif %}</td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr>
+                                                        <td colspan="8">No team members yet.</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="empty-text admin-empty-inline">No teams registered yet.</p>
+                        {% endif %}
+                    {% else %}
+                        {% if event.attendees.all %}
+                            <div class="admin-table-wrap">
+                                <table class="admin-registration-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Roll No</th>
+                                            <th>Section</th>
+                                            <th>Dept</th>
+                                            <th>Year</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for attendee in event.attendees.all %}
+                                        <tr>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.full_name|default:'-' }}{% else %}-{% endif %}</td>
+                                            <td>{{ attendee.username }}</td>
+                                            <td>{{ attendee.email|default:'-' }}</td>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.phone|default:'-' }}{% else %}-{% endif %}</td>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.roll_no|default:'-' }}{% else %}-{% endif %}</td>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.section|default:'-' }}{% else %}-{% endif %}</td>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.department|default:'-' }}{% else %}-{% endif %}</td>
+                                            <td>{% if attendee.admin_profile %}{{ attendee.admin_profile.year_of_study|default:'-' }}{% else %}-{% endif %}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="8">No users registered yet.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="empty-text admin-empty-inline">No users registered yet.</p>
+                        {% endif %}
+                    {% endif %}
+                </details>
 
                 <div class="upcoming-actions admin-card-actions">
                     <a href="{% url 'event_detail' event.id %}" class="cta-btn upcoming-btn">View</a>
                     <a href="{% url 'edit_event' event.id %}" class="cta-btn upcoming-btn alt">Edit</a>
+                </div>
+                <div class="upcoming-actions admin-card-actions admin-export-row">
+                    <a href="{% url 'export_event_registrations_csv' event.id %}" class="cta-btn upcoming-btn alt">Export CSV</a>
                 </div>
                 <form method="post" action="{% url 'delete_event' event.id %}" class="inline-form admin-delete-form" onsubmit="return confirm('Delete this event?');">
                     {% csrf_token %}

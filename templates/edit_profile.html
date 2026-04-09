@@ -19,6 +19,9 @@
 
         <form method="post" class="auth-form event-form">
             {% csrf_token %}
+            {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+            {% endif %}
             {{ form.as_p }}
             <button type="submit" class="cta-btn auth-submit">Save Profile</button>
         </form>

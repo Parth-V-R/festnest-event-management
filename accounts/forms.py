@@ -19,7 +19,6 @@ class ProfileForm(forms.ModelForm):
             'section',
             'roll_no',
             'phone',
-            'bio',
         ]
         widgets = {
             'full_name': forms.TextInput(attrs={'placeholder': 'Enter full name'}),
@@ -29,7 +28,6 @@ class ProfileForm(forms.ModelForm):
             'section': forms.TextInput(attrs={'placeholder': 'e.g., A'}),
             'roll_no': forms.TextInput(attrs={'placeholder': 'e.g., 23CS101'}),
             'phone': forms.TextInput(attrs={'placeholder': 'Enter phone number'}),
-            'bio': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Tell us about yourself'}),
         }
 
     def __init__(self, *args, user=None, **kwargs):

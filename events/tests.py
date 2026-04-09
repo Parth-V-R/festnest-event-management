@@ -5,6 +5,23 @@ from datetime import date, timedelta
 from django.utils import timezone
 
 from .models import Event, WaitlistEntry, Team
+from accounts.models import Profile
+
+
+def complete_required_profile(user, **overrides):
+    defaults = {
+        'full_name': 'Test User',
+        'department': 'CSE',
+        'year_of_study': '4',
+        'section': 'A',
+        'roll_no': f'ROLL-{user.username}',
+    }
+    defaults.update(overrides)
+    profile, _ = Profile.objects.get_or_create(user=user, defaults=defaults)
+    for key, value in defaults.items():
+        setattr(profile, key, value)
+    profile.save()
+    return profile
 
 
 class EventRegistrationTests(TestCase):
@@ -18,6 +35,8 @@ class EventRegistrationTests(TestCase):
             username='student1b',
             password='safePass123!',
         )
+        complete_required_profile(self.user)
+        complete_required_profile(self.user2)
         self.event = Event.objects.create(
             title='Hackathon 2026',
             category='technical',
@@ -116,6 +135,21 @@ class EventRegistrationTests(TestCase):
         response = self.client.get(reverse('category', args=['technical']))
 
         self.assertContains(response, 'Drop')
+
+    def test_register_redirects_to_edit_profile_when_profile_incomplete(self):
+        incomplete_user = self.user_model.objects.create_user(
+            username='incomplete1',
+            password='safePass123!',
+        )
+        self.client.login(username='incomplete1', password='safePass123!')
+
+        response = self.client.post(reverse('register_event', args=[self.event.id]))
+
+        self.assertRedirects(
+            response,
+            f"{reverse('edit_profile')}?next={reverse('event_detail', args=[self.event.id])}",
+        )
+        self.assertFalse(self.event.attendees.filter(pk=incomplete_user.pk).exists())
 
 
 class EventSearchTests(TestCase):
@@ -397,6 +431,67 @@ class EventManagementTests(TestCase):
         self.assertEqual(created.min_team_size, 1)
         self.assertEqual(created.max_team_size, 4)
 
+    def test_superuser_can_export_individual_event_registrations_csv(self):
+        attendee = self.user_model.objects.create_user(
+            username='csvstudent',
+            email='csvstudent@example.com',
+            password='safePass123!',
+        )
+        Profile.objects.create(
+            user=attendee,
+            full_name='CSV Student',
+            phone='9999999999',
+            roll_no='24CS101',
+            section='A',
+            department='CSE',
+            year_of_study='4',
+        )
+        self.event.attendees.add(attendee)
+        self.client.login(username='admin1', password='safePass123!')
+
+        response = self.client.get(reverse('export_event_registrations_csv', args=[self.event.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn('attachment; filename=', response['Content-Disposition'])
+        csv_text = response.content.decode('utf-8')
+        self.assertIn('Event Title,Category,Event Date,Event Type,Team Name,Team Status,User Role,Username', csv_text)
+        self.assertIn('Admin Managed Event,Technical,2026-06-10,Individual Event,,,Attendee,csvstudent', csv_text)
+
+    def test_export_registrations_csv_requires_superuser(self):
+        self.client.login(username='student3', password='safePass123!')
+
+        response = self.client.get(reverse('export_event_registrations_csv', args=[self.event.id]))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_superuser_can_export_all_registrations_csv(self):
+        attendee = self.user_model.objects.create_user(
+            username='allcsvstudent',
+            email='allcsvstudent@example.com',
+            password='safePass123!',
+        )
+        Profile.objects.create(user=attendee, full_name='All CSV Student')
+        self.event.attendees.add(attendee)
+        self.client.login(username='admin1', password='safePass123!')
+
+        response = self.client.get(reverse('export_all_registrations_csv'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn('attachment; filename="all_events_registrations.csv"', response['Content-Disposition'])
+        csv_text = response.content.decode('utf-8')
+        self.assertIn('Event Date,Event Type,Team Name,Team Status,User Role,Username', csv_text)
+        self.assertIn('Admin Managed Event,Technical', csv_text)
+        self.assertIn('allcsvstudent', csv_text)
+
+    def test_export_all_registrations_csv_requires_superuser(self):
+        self.client.login(username='student3', password='safePass123!')
+
+        response = self.client.get(reverse('export_all_registrations_csv'))
+
+        self.assertEqual(response.status_code, 302)
+
 
 class TeamEventTests(TestCase):
     def setUp(self):
@@ -404,6 +499,9 @@ class TeamEventTests(TestCase):
         self.user1 = self.user_model.objects.create_user(username='teamlead', password='safePass123!')
         self.user2 = self.user_model.objects.create_user(username='member2', password='safePass123!')
         self.user3 = self.user_model.objects.create_user(username='member3', password='safePass123!')
+        complete_required_profile(self.user1)
+        complete_required_profile(self.user2)
+        complete_required_profile(self.user3)
         self.team_event = Event.objects.create(
             title='Inter College Hack Relay',
             category='technical',
@@ -455,3 +553,21 @@ class TeamEventTests(TestCase):
         response = self.client.post(reverse('register_event', args=[self.team_event.id]))
         self.assertRedirects(response, reverse('event_detail', args=[self.team_event.id]))
         self.assertFalse(self.team_event.attendees.filter(pk=self.user3.pk).exists())
+
+    def test_create_team_redirects_to_edit_profile_when_profile_incomplete(self):
+        incomplete_user = self.user_model.objects.create_user(
+            username='teamincomplete',
+            password='safePass123!',
+        )
+        self.client.login(username='teamincomplete', password='safePass123!')
+
+        response = self.client.post(
+            reverse('create_team', args=[self.team_event.id]),
+            {'team_name': 'NoProfileTeam'},
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('edit_profile')}?next={reverse('event_detail', args=[self.team_event.id])}",
+        )
+        self.assertFalse(Team.objects.filter(event=self.team_event, name='NoProfileTeam').exists())

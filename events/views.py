@@ -1,13 +1,16 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .models import Event, WaitlistEntry, Team
 from .forms import EventForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.urls import reverse
+from django.contrib.auth.models import User
+import csv
 
 
 def build_team_state(user, events_qs=None):
@@ -27,6 +30,41 @@ def build_team_state(user, events_qs=None):
 def replace_flash(request, level, text):
     list(messages.get_messages(request))
     messages.add_message(request, level, text)
+
+
+def _missing_profile_fields_for_enrollment(user):
+    missing = []
+    profile = getattr(user, 'profile', None)
+
+    if not (user.username or '').strip():
+        missing.append('Username')
+    if profile is None or not (profile.full_name or '').strip():
+        missing.append('Full Name')
+    if profile is None or not (profile.roll_no or '').strip():
+        missing.append('Roll No')
+    if profile is None or not (profile.department or '').strip():
+        missing.append('Department')
+    if profile is None or not (profile.year_of_study or '').strip():
+        missing.append('Year')
+    if profile is None or not (profile.section or '').strip():
+        missing.append('Section')
+    return missing
+
+
+def _enrollment_profile_gate(request, event_id):
+    missing_fields = _missing_profile_fields_for_enrollment(request.user)
+    if not missing_fields:
+        return None
+
+    replace_flash(
+        request,
+        messages.ERROR,
+        'Complete profile before enrollment. Required fields: '
+        + ', '.join(missing_fields)
+        + '.',
+    )
+    next_url = reverse('event_detail', args=[event_id])
+    return redirect(f"{reverse('edit_profile')}?next={next_url}")
 
 
 def home(request):
@@ -179,8 +217,196 @@ def is_superuser(user):
 @login_required
 @user_passes_test(is_superuser)
 def manage_events(request):
-    events = Event.objects.all().order_by('date')
+    events_qs = (
+        Event.objects
+        .all()
+        .prefetch_related(
+            Prefetch(
+                'attendees',
+                queryset=User.objects.select_related('profile').order_by('username'),
+            ),
+            Prefetch(
+                'teams',
+                queryset=(
+                    Team.objects
+                    .select_related('leader', 'leader__profile')
+                    .prefetch_related(
+                        Prefetch(
+                            'members',
+                            queryset=User.objects.select_related('profile').order_by('username'),
+                        ),
+                    )
+                    .order_by('name')
+                ),
+            ),
+        )
+        .order_by('date')
+    )
+    events = list(events_qs)
+    for event in events:
+        event.submitted_team_count = sum(1 for team in event.teams.all() if team.is_submitted)
+        for attendee in event.attendees.all():
+            attendee.admin_profile = getattr(attendee, 'profile', None)
+        for team in event.teams.all():
+            team.leader.admin_profile = getattr(team.leader, 'profile', None)
+            for member in team.members.all():
+                member.admin_profile = getattr(member, 'profile', None)
     return render(request, 'manage_events.html', {'events': events})
+
+
+@login_required
+@user_passes_test(is_superuser)
+def export_event_registrations_csv(request, id):
+    event = (
+        Event.objects
+        .filter(id=id)
+        .prefetch_related(
+            Prefetch(
+                'attendees',
+                queryset=User.objects.select_related('profile').order_by('username'),
+            ),
+            Prefetch(
+                'teams',
+                queryset=(
+                    Team.objects
+                    .select_related('leader', 'leader__profile')
+                    .prefetch_related(
+                        Prefetch(
+                            'members',
+                            queryset=User.objects.select_related('profile').order_by('username'),
+                        ),
+                    )
+                    .order_by('name')
+                ),
+            ),
+        )
+        .first()
+    )
+    if not event:
+        return redirect('manage_events')
+
+    response = HttpResponse(content_type='text/csv')
+    safe_title = ''.join(ch if ch.isalnum() else '_' for ch in event.title).strip('_') or f'event_{event.id}'
+    response['Content-Disposition'] = f'attachment; filename="{safe_title}_registrations.csv"'
+    writer = csv.writer(response)
+    _write_registration_csv(writer, [event])
+    return response
+
+
+@login_required
+@user_passes_test(is_superuser)
+def export_all_registrations_csv(request):
+    events = (
+        Event.objects
+        .all()
+        .prefetch_related(
+            Prefetch(
+                'attendees',
+                queryset=User.objects.select_related('profile').order_by('username'),
+            ),
+            Prefetch(
+                'teams',
+                queryset=(
+                    Team.objects
+                    .select_related('leader', 'leader__profile')
+                    .prefetch_related(
+                        Prefetch(
+                            'members',
+                            queryset=User.objects.select_related('profile').order_by('username'),
+                        ),
+                    )
+                    .order_by('name')
+                ),
+            ),
+        )
+        .order_by('date', 'title')
+    )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="all_events_registrations.csv"'
+    writer = csv.writer(response)
+    _write_registration_csv(writer, events)
+    return response
+
+
+def _write_registration_csv(writer, events):
+    writer.writerow(
+        [
+            'Event ID',
+            'Event Title',
+            'Category',
+            'Event Date',
+            'Event Type',
+            'Team Name',
+            'Team Status',
+            'User Role',
+            'Username',
+            'Full Name',
+            'Email',
+            'Phone',
+            'Roll No',
+            'Section',
+            'Department',
+            'Year',
+        ],
+    )
+
+    def profile_value(user_obj, field_name):
+        profile = getattr(user_obj, 'profile', None)
+        if not profile:
+            return ''
+        return getattr(profile, field_name, '') or ''
+
+    for event in events:
+        event_type = 'Team Event' if event.is_team_event else 'Individual Event'
+
+        if event.is_team_event:
+            for team in event.teams.all():
+                team_status = 'Submitted' if team.is_submitted else 'In Progress'
+                for member in team.members.all():
+                    role = 'Leader' if member.id == team.leader_id else 'Member'
+                    writer.writerow(
+                        [
+                            event.id,
+                            event.title,
+                            event.get_category_display(),
+                            event.date,
+                            event_type,
+                            team.name,
+                            team_status,
+                            role,
+                            member.username,
+                            profile_value(member, 'full_name'),
+                            member.email or '',
+                            profile_value(member, 'phone'),
+                            profile_value(member, 'roll_no'),
+                            profile_value(member, 'section'),
+                            profile_value(member, 'department'),
+                            profile_value(member, 'year_of_study'),
+                        ],
+                    )
+        else:
+            for attendee in event.attendees.all():
+                writer.writerow(
+                    [
+                        event.id,
+                        event.title,
+                        event.get_category_display(),
+                        event.date,
+                        event_type,
+                        '',
+                        '',
+                        'Attendee',
+                        attendee.username,
+                        profile_value(attendee, 'full_name'),
+                        attendee.email or '',
+                        profile_value(attendee, 'phone'),
+                        profile_value(attendee, 'roll_no'),
+                        profile_value(attendee, 'section'),
+                        profile_value(attendee, 'department'),
+                        profile_value(attendee, 'year_of_study'),
+                    ],
+                )
 
 
 @login_required
@@ -278,6 +504,10 @@ def my_registrations(request):
 @require_POST
 def register_event(request, id):
     event = get_object_or_404(Event, id=id)
+    gate_response = _enrollment_profile_gate(request, id)
+    if gate_response:
+        return gate_response
+
     if event.is_team_event:
         replace_flash(
             request,
@@ -367,6 +597,10 @@ def unregister_event(request, id):
 @require_POST
 def create_team(request, id):
     event = get_object_or_404(Event, id=id)
+    gate_response = _enrollment_profile_gate(request, id)
+    if gate_response:
+        return gate_response
+
     if not event.is_team_event:
         messages.error(request, 'This event does not support team registration.')
         return redirect('event_detail', id=id)
@@ -395,6 +629,10 @@ def create_team(request, id):
 @require_POST
 def join_team(request, id):
     event = get_object_or_404(Event, id=id)
+    gate_response = _enrollment_profile_gate(request, id)
+    if gate_response:
+        return gate_response
+
     if not event.is_team_event:
         messages.error(request, 'This event does not support team registration.')
         return redirect('event_detail', id=id)
@@ -458,6 +696,10 @@ def leave_team(request, id):
 @require_POST
 def submit_team(request, id):
     event = get_object_or_404(Event, id=id)
+    gate_response = _enrollment_profile_gate(request, id)
+    if gate_response:
+        return gate_response
+
     if not event.is_team_event:
         messages.error(request, 'This event does not support team registration.')
         return redirect('event_detail', id=id)
